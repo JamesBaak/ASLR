@@ -1,0 +1,23 @@
+// Creation of table users
+BEGIN;
+CREATE TABLE users (userID INTEGER, username TEXT, saltValue TEXT, password TEXT, developer INTEGER);
+COMMIT;
+
+// Creation of three initial developer accounts
+BEGIN;
+INSERT INTO users values(0, "alyssa", "FFFF", "password", 1);
+INSERT INTO users values(1, "james", "FFFF", "password123", 1);
+INSERT INTO users values(2, "maaike", "FFFF", "password", 1);
+COMMIT;
+
+// Creation of table MLResults 
+BEGIN;
+CREATE TABLE MLResults (userID INTEGER, inputMatrix TEXT, prediction INTEGER, class INTEGER);
+COMMIT;
+
+// Creation of table letters
+BEGIN;
+CREATE TABLE letters (signLangageLetter INTEGER);
+COMMIT;
+
+
