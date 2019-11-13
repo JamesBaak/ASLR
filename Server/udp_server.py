@@ -44,6 +44,6 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
 
 if __name__ == "__main__":
     HOST, PORT = "", 9999
-    DB_LOC = "./Database/aslr_database.db"
-    with MyUDPServer((HOST, PORT), MyUDPHandler,  True, "") as server:
+    DB_LOC = r".\Database\aslr_database.db" # For windows. The slashes may have to be changed for linux
+    with MyUDPServer((HOST, PORT), MyUDPHandler, True, DB_LOC) as server:
         server.serve_forever()

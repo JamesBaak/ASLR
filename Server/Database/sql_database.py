@@ -6,8 +6,8 @@ from sqlite3 import Error
 # the database
 class Database:
     def __init__(self, file):
-        conn = self.create_connection(file)
-        print(conn)
+        self.conn = self.create_connection(file)
+        print(self.conn)
 
     def create_user(self, user):
         """
@@ -37,6 +37,20 @@ class Database:
         cur.execute(sql, event)
         return cur.lastrowid
 
+    def get_all_events(self):
+        """
+        Query all rows in the MLResults table
+        :param conn: the Connection object
+        :return:
+        """
+        cur = self.conn.cursor()
+        cur.execute("SELECT * FROM MLResults")
+    
+        rows = cur.fetchall()
+    
+        for row in rows:
+            print(row)
+
     def create_connection(self, db_file):
         """ create a database connection to the SQLite database
             specified by db_file
@@ -46,6 +60,7 @@ class Database:
         conn = None
         try:
             conn = sqlite3.connect(db_file)
+            print(sqlite3.version)
         except Error as e:
             print(e)
     
