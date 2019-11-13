@@ -7,6 +7,7 @@ from sqlite3 import Error
 class Database:
     def __init__(self, file):
         conn = self.create_connection(file)
+        print(conn)
 
     def create_user(self, user):
         """
