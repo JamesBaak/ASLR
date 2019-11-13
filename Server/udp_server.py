@@ -16,7 +16,7 @@ class MyUDPServer(socketserver.UDPServer):
         self.database = Database(db_file)
 
 class MyUDPHandler(socketserver.BaseRequestHandler):
-    
+
     def handle(self):
         request = json.loads(self.request[0].strip())
         socket = self.request[1]
@@ -25,22 +25,37 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
 
         if not "type" in request:
             socket.sendto(
-                bytes(json.dumps(self.constructError("Missing type field...")), "utf-8"),
+                bytes(json.dumps(self.__constructError__("Missing type field...")), "utf-8"),
                 self.client_address
             )
         elif not "payload" in request:
             socket.sendto(
-                bytes(json.dumps(self.constructError("Missing payload field...")), "utf-8"),
+                bytes(json.dumps(self.__constructError__("Missing payload field...")), "utf-8"),
                 self.client_address
             )
         else:
-            socket.sendto(bytes(json.dumps(ACK), "utf-8"), self.client_address)
             # Process request
+            if request["type"] == "sample": # Send request to ML PI to sample and return response
+                self.__handleSample__(socket, request["payload"])
+            elif request["type"] == "save": # From the ML PI with the ML result record
+                self.__handleSave__(socket, request["payload"])
+            else: # Request type not specified
+                socket.sendto(
+                    bytes(json.dumps(self.__constructError__("Unknown type field...")), "utf-8"),
+                    self.client_address
+                )
 
-    def constructError(self, msg):
+    def __constructError__(self, msg):
         error0 = ERROR.copy()
         error0["payload"] = msg
         return error0
+
+    def __handleSample__(self, socket, payload):
+        print(payload)
+
+    def __handleSave__(self, socket, payload):
+        # Can access the database object through self.server.database
+        print(payload)
 
 if __name__ == "__main__":
     HOST, PORT = "", 9999
