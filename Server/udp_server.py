@@ -6,8 +6,11 @@ from Database.sql_database import Database
 # https://docs.python.org/3/library/socketserver.html
 # https://docs.python.org/3/library/socketserver.html#socketserver-udpserver-example
 
+# JSON msg types for construction of responses
 ERROR = { "type": "error", "payload": "" }
 ACK   = { "type": "ack", "payload": "" }
+SIGN  = { "type": "sign", "payload": "" }
+USER  = { "type": "user", "payload": {} }
 
 class MyUDPServer(socketserver.UDPServer):
     
@@ -23,17 +26,16 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
         socket = self.request[1]
         print("Request from {}:".format(self.client_address[0]))
         print(request)
-        print(self.client_address)
 
         # Check to see if type and payload are in the json message request to the server
         if not "type" in request:
             socket.sendto(
-                bytes(json.dumps(self.__constructError__("Missing type field...")), "utf-8"),
+                bytes(json.dumps(self.__constructJSON__(ERROR, "Missing type field...")), "utf-8"),
                 self.client_address
             )
         elif not "payload" in request:
             socket.sendto(
-                bytes(json.dumps(self.__constructError__("Missing payload field...")), "utf-8"),
+                bytes(json.dumps(self.__constructJSON__(ERROR, "Missing payload field...")), "utf-8"),
                 self.client_address
             )
         # Valid request structure, so handle it if valid type, else reply with error message
@@ -44,21 +46,25 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
             elif request["type"] == "save": # From the ML PI with the ML result record
                 self.__handleSave__(socket, request["payload"])
             elif request["type"] == "load": # Load the users data into the Machine learning PI
-                self.__handLoad__(socket, request["payload"])
+                self.__handleLoad__(socket, request["payload"])
+            elif request["type"] == "create_user": # Create the new user in the database
+                self.__handleCreateUser__(socket, request["payload"])
+            elif request["type"] == "get_user": # Get a user by username and return to sender
+                self.__handleGetUser__(socket, request["payload"])
             else: # Request type not specified
                 socket.sendto(
-                    bytes(json.dumps(self.__constructError__("Unknown type field...")), "utf-8"),
+                    bytes(json.dumps(self.__constructJSON__(ERROR, "Unknown type field...")), "utf-8"),
                     self.client_address
                 )
 
-    def __constructError__(self, msg):
+    def __constructJSON__(self, msgType, msg):
         """
         Construct an error json for UDP response
         msg [string] - The payload of the error message
         """
-        error0 = ERROR.copy()
-        error0["payload"] = msg
-        return error0
+        m_json = msgType.copy()
+        m_json["payload"] = msg
+        return m_json
 
     def __handleSample__(self, socket, payload):
         """
@@ -85,6 +91,39 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
         """
         self.__sendAck__(socket)
         print(payload)
+
+    def __handleCreateUser__(self, socket, payload):
+        """
+        Create the new user in the database from the payload
+        payload [json: { username: string, saltValue: string, password: string, developer: int }]
+        """
+        self.__sendAck__(socket)
+        next_id = self.server.database.get_user_len()
+        self.server.database.create_user((
+            next_id,
+            payload.username,
+            payload.saltValue,
+            payload.password,
+            payload.developer
+        ))
+
+    def __handleGetUser__(self, socket, payload):
+        """
+        Get the user by username and return the user to the requestor
+        payload [string] - The username of the user to return
+        """
+        print(payload)
+        user_t = self.server.database.get_user(payload) # Tuple of the user
+        user_json = {
+            "username" : user_t[1],
+            "salt"     : user_t[2],
+            "password" : user_t[3],
+            "developer": user_t[4]
+        }
+        socket.sendto(
+            bytes(json.dumps(self.__constructJSON__(USER, user_json)), "utf-8"),
+            self.client_address
+        )
 
     def __sendAck__(self, socket):
         socket.sendto(bytes(json.dumps(ACK), "utf-8"), self.client_address)

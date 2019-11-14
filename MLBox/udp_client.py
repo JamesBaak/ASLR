@@ -6,8 +6,8 @@ import json
 
 HOST, PORT = "localhost", 9999
 data = {
-    "type": "ack",
-    "payload" : ""
+    "type": "get_user",
+    "payload" : "james"
 }
 
 # SOCK_DGRAM is the socket type to use for UDP sockets
