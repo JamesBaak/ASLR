@@ -4,7 +4,6 @@
 // External Interrupt Pins: pins 2 and 3
 
 int outPin = 3; // Our data out pin (where we turn on an IR Emitter)
-int inPin = 4; // Our data in pin (where we receive data from an IR Receiver)
 
 int emitSelect1 = 5; // mux select 0
 int emitSelect2 = 6; // mux select 1
@@ -20,7 +19,6 @@ bool startUp = true; // indicates if we are just turning on the ardunio or not
 
 void setup() {
   pinMode(outPin, OUTPUT);
-  pinMode(inPin, INPUT);
   
   // IR Emitter selector pins
   pinMode(emitSelect1, OUTPUT);
@@ -35,9 +33,31 @@ void setup() {
   pinMode(recvSelect4, OUTPUT);
 
   //Initialize serial and wait for port to open:
-  Serial.begin(9600);
-  while (!Serial) {
-    ; // wait for serial port to connect. Needed for native USB
+  //  Serial.begin(9600);
+  //  while (!Serial) {
+  //    ; // wait for serial port to connect. Needed for native USB
+  //  }
+}
+
+void loop() {
+  if (startUp)
+  {
+    // wait a couple seconds for the emitters/receivers to warm up
+    // all receivers should be waiting to receive and no emitter should be selected
+    delay(2000);
+    startUp = false;
+  }
+
+  for (int emitter = 0; emitter < 14; emitter++) {
+    select('e', emitter); // select emitter
+    digitalWrite(outPin, HIGH); // turn emitter on
+
+    for (int receiver = 0; receiver < 14; receiver++) {
+      select('r', receiver); // select receiver
+      readVoltage(); // read data from receiver
+    }
+
+    digitalWrite(outPin, LOW); // turn emitter off
   }
 }
 
@@ -72,27 +92,14 @@ void select(char selectPins, int selectNum){
   else digitalWrite(pin4, LOW);
 }
 
-void loop() {
-  if (startUp)
-  {
-    // wait a couple seconds for the emitters/receivers to warm up
-    // all receivers should be waiting to receive and no emitter should be selected
-    delay(3000);
-    startUp = false;
-  }
+// Arduino UNOs can sense between 0.0049 volts (4.9 mV) to 5 volts.
+// On ATmega based boards (UNO, Nano, Mini, Mega), it takes about 100 microseconds (0.0001 s) 
+// to read an analog input, so the maximum reading rate is about 10,000 times a second.
+float readVoltage() {
+  int sensorValue = analogRead(A0);
+  float voltage = sensorValue * (5.0 / 1023.0);
 
-  for (int emitter = 0; emitter < 14; emitter++) {
-    select('e', emitter); // select emitter
-    digitalWrite(outPin, HIGH); // turn emitter on
-
-    delay(500);
-    for (int receiver = 0; receiver < 14; receiver++) {
-      select('r', receiver); // select receiver
-      delay(500);
-      digitalRead(inPin); // read data from receiver
-      // out to pi ->SERIAL
-    }
-
-    digitalWrite(outPin, LOW);
-  }
+  //Serial.println(voltage)
+  // out to pi ->SERIAL
+  return voltage;
 }
