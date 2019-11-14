@@ -12,7 +12,7 @@ The server takes UDP requests with a string representing a JSON in the content. 
 The JSON has the keys `type` and `payload`. The keys/fields are required to communicate with the server, otherwise an error message will be returned.
 Table of supported types and their respective payloads:
 Type | Payload
------------- | -------------
+---- | -------
 sample | empty string to get prediction from ML PI or an int representing one of the gestures
 save | [json: { "prediction": string, "class": string, "input": int[196] }]
 load | The username of the user's data that the machine learning algorithm should train with 
