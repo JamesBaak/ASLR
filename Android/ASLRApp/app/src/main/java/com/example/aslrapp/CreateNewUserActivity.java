@@ -11,10 +11,15 @@ import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
@@ -88,7 +93,7 @@ public class CreateNewUserActivity extends AppCompatActivity{
     public void createNewUser(String username, String password, String confirmPassword, Boolean developer){
 
         if (!confirmPassword.equals(password)){
-            mResultView.setText("Password and Confirm Password do not match");
+            mResultView.setText(R.string.non_match_passwords_error);
             mResultView.setVisibility(View.VISIBLE);
             return;
         }
@@ -99,9 +104,31 @@ public class CreateNewUserActivity extends AppCompatActivity{
         String encryptedPassword = _hashPassword(password, salt);
 
         //send user to database
+        JSONObject usernamRequest = new JSONObject();
+        try {
+            usernamRequest.put("type", "create_user");
+        } catch (JSONException e){
+            // TODO do something with exception
+        }
+
+        Map m = new LinkedHashMap(4);
+        m.put("username", username);
+        m.put("saltValue", salt.toString());
+        m.put("password", encryptedPassword);
+        m.put("developer", developer ? 1 : 0);
+
+        try {
+            usernamRequest.put("payload", m);
+        } catch (JSONException e){
+            // TODO do something with exception
+        }
+
+        // TODO wait for response or a time out
+        // TODO use reponse to determine if user was created successfully
         Boolean result = true;
+
         if (result){
-            mResultView.setText("Successfully Created New User");
+            mResultView.setText(R.string.success_new_user);
             mResultView.setVisibility(View.VISIBLE);
 
             try {
@@ -113,7 +140,7 @@ public class CreateNewUserActivity extends AppCompatActivity{
             Intent MainIntent = new Intent(CreateNewUserActivity.this, MainActivity.class);
             CreateNewUserActivity.this.startActivity(MainIntent);
         } else {
-            //print error message
+            // TODO print error message if user was not created successfully
         }
     }
 

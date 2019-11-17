@@ -10,6 +10,9 @@ import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
@@ -21,6 +24,24 @@ import javax.crypto.spec.PBEKeySpec;
 
 class InputException extends Exception {
     InputException(String str) { super(str); }
+}
+
+final class LoginResult {
+    private final Boolean result;
+    private final Boolean developer;
+
+    public LoginResult(Boolean result, Boolean developer) {
+        this.result = result;
+        this.developer = developer;
+    }
+
+    public Boolean getResult() {
+        return result;
+    }
+
+    public Boolean getDeeloper() {
+        return developer;
+    }
 }
 
 class LoginActivity extends AppCompatActivity{
@@ -54,7 +75,7 @@ class LoginActivity extends AppCompatActivity{
                 try {
                     _processInput(username);
                 }catch (InputException e){
-                    mResultView.setText("Invalid Username. Please ensure the username only contains alphanumeric characters");
+                    mResultView.setText("Invalid Username. \nPlease ensure the username only contains alphanumeric characters");
                     mResultView.setVisibility(View.VISIBLE);
                     return;
                 }
@@ -62,28 +83,48 @@ class LoginActivity extends AppCompatActivity{
                 try {
                     _processInput(password);
                 }catch (InputException e){
-                    mResultView.setText("Invalid Password. Please ensure the password only contains alphanumeric characters");
+                    mResultView.setText("Invalid Password. \nPlease ensure the password only contains alphanumeric characters");
                     mResultView.setVisibility(View.VISIBLE);
                     return;
                 }
 
-                Boolean result = login(username, password);
+                LoginResult result = login(username, password);
 
-                if (result){
-                    Log.i(TAG, "Successful login");
-                    Intent UserIntent = new Intent(LoginActivity.this, UserActivity.class);
-                    LoginActivity.this.startActivity(UserIntent);
+                if (result.getResult() && result.getDeeloper()){
+                    Log.i(TAG, "Successful login as developer");
+                    Intent SampleIntent = new Intent(LoginActivity.this, SampleActivity.class);
+                    SampleIntent.putExtra("TRAIN_AI", true);
+                    LoginActivity.this.startActivity(SampleIntent);
+                } else if (result.getResult()){
+                    Log.i(TAG, "Successful login as developer");
+                    Intent SampleIntent = new Intent(LoginActivity.this, SampleActivity.class);
+                    LoginActivity.this.startActivity(SampleIntent);
                 }
             }
         });
 
     }
 
-    public Boolean login (String username, String password){
+    public LoginResult login (String username, String password){
         String databasePassword;
         byte[] salt;
+        Boolean developer = false;
 
-        // get salt value and databasePassword
+        // get salt value, databasePassword and developer status
+        JSONObject usernamRequest = new JSONObject();
+        try {
+            usernamRequest.put("type", "get_user");
+        } catch (JSONException e){
+            // TODO do something with exception
+        }
+
+        try {
+            usernamRequest.put("payload", username);
+        } catch (JSONException e){
+            // TODO do something with excpetion
+        }
+
+        // TODO process response and print error if unsuccessful 
         databasePassword = "password";
         salt = "FFFF".getBytes();
 
@@ -91,22 +132,22 @@ class LoginActivity extends AppCompatActivity{
 
         if (encryptedPassword == null) {
             Log.i(TAG, "Error Hashing Password");
-            mResultView.setText("Error Hashing Password");
+            mResultView.setText(R.string.hash_error);
             mResultView.setVisibility(View.VISIBLE);
         } else if (databasePassword.equals(encryptedPassword)){
             mResultView.setVisibility(View.INVISIBLE);
             numTries = 0;
-            return true;
+            return new LoginResult(true, developer);
         }
 
         numTries ++;
-        mResultView.setText("Access Denied");
+        mResultView.setText(R.string.access_denied);
         mResultView.setVisibility(View.VISIBLE);
 
         if (numTries == 3){
             numTries = 0;
 
-            mResultView.setText("Five minute timeout: too many login attempts");
+            mResultView.setText("Five minute timeout:\n too many login attempts");
             mResultView.setVisibility(View.VISIBLE);
 
             mLoginButton.setEnabled(false);
@@ -119,7 +160,7 @@ class LoginActivity extends AppCompatActivity{
             mLoginButton.setEnabled(true);
         }
 
-        return false;
+        return new LoginResult(true, false);
     }
 
     private void _processInput(String input) throws InputException{
