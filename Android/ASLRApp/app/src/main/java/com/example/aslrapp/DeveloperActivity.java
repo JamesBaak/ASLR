@@ -18,7 +18,7 @@ public class DeveloperActivity  extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.activity_developer);
 
         mCreateNewUserButton = (Button) findViewById(R.id.create_new_user_button);
         mSampleButton = (Button) findViewById(R.id.sign_letter_button);
@@ -29,6 +29,7 @@ public class DeveloperActivity  extends AppCompatActivity {
             public void onClick(View v) {
                 Log.i(TAG, "CreateNewUserButton pressed");
                 Intent CreateUserIntent = new Intent(DeveloperActivity.this, CreateNewUserActivity.class);
+                CreateUserIntent.putExtra("DEVELOPER", true);
                 DeveloperActivity.this.startActivity(CreateUserIntent);
             }
         });

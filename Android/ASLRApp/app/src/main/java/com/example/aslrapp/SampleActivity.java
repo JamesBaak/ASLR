@@ -38,7 +38,7 @@ enum Letter
     }
 }
 
-class SampleActivity extends AppCompatActivity{
+public class SampleActivity extends AppCompatActivity{
 
     private  final String TAG = this.getClass().getSimpleName() + " @" + System.identityHashCode(this);
     private ImageView mImage;
@@ -52,12 +52,17 @@ class SampleActivity extends AppCompatActivity{
         Boolean train = false;
 
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_sample);
 
         mImage = (ImageView) findViewById(R.id.aslLetter);
         mGroup = (RadioGroup) findViewById(R.id.button_group);
         mSampleButton = (Button) findViewById(R.id.sample_button);
 
+        mGroup.setVisibility(View.INVISIBLE);
+
         train = getIntent().getBooleanExtra("TRAIN_AI", false);
+
+        letter = Letter.NONE;
 
         if (train){
             mGroup.setVisibility(View.VISIBLE);
@@ -98,9 +103,11 @@ class SampleActivity extends AppCompatActivity{
                 Log.i(TAG, "Sample Button pressed");
 
                 JSONObject sampleRequest = new JSONObject();
+
                 try {
                     sampleRequest.put("type", "sample");
                 } catch (JSONException e){
+
                     //TODO do something with exception
                 }
 
@@ -127,19 +134,19 @@ class SampleActivity extends AppCompatActivity{
                 // display the correct ASL letter image
                 switch(result) {
                     case B:
-                        mImage.setImageResource(R.drawable.signB);
+                        mImage.setImageResource(R.drawable.signb);
                         break;
                     case I:
-                        mImage.setImageResource(R.drawable.signI);
+                        mImage.setImageResource(R.drawable.signi);
                         break;
                     case L:
-                        mImage.setImageResource(R.drawable.signL);
+                        mImage.setImageResource(R.drawable.signl);
                         break;
                     case O:
-                        mImage.setImageResource(R.drawable.signO);
+                        mImage.setImageResource(R.drawable.signo);
                         break;
                     case Y:
-                        mImage.setImageResource(R.drawable.signY);
+                        mImage.setImageResource(R.drawable.signy);
                         break;
                     case ONE:
                         mImage.setImageResource(R.drawable.sign1);

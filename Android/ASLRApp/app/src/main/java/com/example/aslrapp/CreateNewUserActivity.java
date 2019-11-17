@@ -35,7 +35,7 @@ public class CreateNewUserActivity extends AppCompatActivity{
     private EditText mConfirmPassword;
     private Button mCreateNewUserButton;
     private TextView mResultView;
-    private Boolean Developer = false;
+    private Boolean developer = false;
     private CheckBox mDevBox;
 
     @Override
@@ -43,12 +43,20 @@ public class CreateNewUserActivity extends AppCompatActivity{
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_create_new_user);
 
-        mUsername = (EditText) findViewById(R.id.username_edit_text);
-        mPassword = (EditText) findViewById(R.id.password_edit_text);
+        mUsername = (EditText) findViewById(R.id.usernameEdit);
+        mPassword = (EditText) findViewById(R.id.passwordEdit);
         mConfirmPassword = (EditText) findViewById(R.id.confirmPasswordEdit);
-        mCreateNewUserButton = (Button) findViewById(R.id.create_user_button);
-        mResultView = (TextView) findViewById(R.id.result_view);
+        mCreateNewUserButton = (Button) findViewById(R.id.create_new_user_button);
+        mResultView = (TextView) findViewById(R.id.resultView);
         mDevBox = (CheckBox) findViewById(R.id.developerBox);
+
+        mResultView.setVisibility(View.INVISIBLE);
+
+        developer = getIntent().getBooleanExtra("DEVELOPER", false);
+
+        if(developer){
+            mDevBox.setVisibility(View.VISIBLE);
+        }
 
 
         mCreateNewUserButton.setOnClickListener(new View.OnClickListener() {

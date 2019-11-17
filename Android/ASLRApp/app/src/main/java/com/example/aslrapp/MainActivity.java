@@ -11,11 +11,12 @@ import android.widget.Button;
 public class MainActivity extends AppCompatActivity {
 
     private  final String TAG = this.getClass().getSimpleName() + " @" + System.identityHashCode(this);
-    private Button mCreateNewUserButton;
-    private Button mLoginButton;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        Button mCreateNewUserButton;
+        Button mLoginButton;
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 

@@ -39,12 +39,12 @@ final class LoginResult {
         return result;
     }
 
-    public Boolean getDeeloper() {
+    public Boolean getDeveloper() {
         return developer;
     }
 }
 
-class LoginActivity extends AppCompatActivity{
+public class LoginActivity extends AppCompatActivity{
 
     private  final String TAG = this.getClass().getSimpleName() + " @" + System.identityHashCode(this);
     private Button mLoginButton;
@@ -63,6 +63,8 @@ class LoginActivity extends AppCompatActivity{
         mUsername = (EditText) findViewById(R.id.username_edit_text);
         mPassword = (EditText) findViewById(R.id.password_edit_text);
         mResultView = (TextView) findViewById(R.id.result_view);
+
+        mResultView.setVisibility(View.INVISIBLE);
 
         mLoginButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -89,12 +91,12 @@ class LoginActivity extends AppCompatActivity{
                 }
 
                 LoginResult result = login(username, password);
+                System.out.println("Completed login function");
 
-                if (result.getResult() && result.getDeeloper()){
+                if (result.getResult() && result.getDeveloper()){
                     Log.i(TAG, "Successful login as developer");
-                    Intent SampleIntent = new Intent(LoginActivity.this, SampleActivity.class);
-                    SampleIntent.putExtra("TRAIN_AI", true);
-                    LoginActivity.this.startActivity(SampleIntent);
+                    Intent DeveloperIntent = new Intent(LoginActivity.this, DeveloperActivity.class);
+                    LoginActivity.this.startActivity(DeveloperIntent);
                 } else if (result.getResult()){
                     Log.i(TAG, "Successful login as developer");
                     Intent SampleIntent = new Intent(LoginActivity.this, SampleActivity.class);
@@ -124,7 +126,7 @@ class LoginActivity extends AppCompatActivity{
             // TODO do something with excpetion
         }
 
-        // TODO process response and print error if unsuccessful 
+        // TODO process response and print error if unsuccessful
         databasePassword = "password";
         salt = "FFFF".getBytes();
 
@@ -160,7 +162,7 @@ class LoginActivity extends AppCompatActivity{
             mLoginButton.setEnabled(true);
         }
 
-        return new LoginResult(true, false);
+        return new LoginResult(false, false);
     }
 
     private void _processInput(String input) throws InputException{

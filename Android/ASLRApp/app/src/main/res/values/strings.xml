@@ -18,9 +18,10 @@
     <string name="o">O</string>
     <string name="y">Y</string>
     <string name="_1">1</string>
-    <string name="non_match_passwords_error">Password and Confirm Password do not match</string>
+    <string name="non_match_passwords_error">Password and Confirmation Password do not match</string>
     <string name="success_new_user">Successfully Created New User</string>
     <string name="hash_error">Error Hashing Password</string>
     <string name="access_denied">Access Denied</string>
     <string name="train_ai">Train AI</string>
+    <string name="developer">Developer</string>
 </resources>
