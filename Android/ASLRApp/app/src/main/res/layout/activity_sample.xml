@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:orientation="vertical" android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <ImageView
+            android:id="@+id/aslLetter"
+            android:layout_width="321dp"
+            android:layout_height="193dp"
+            android:layout_marginTop="68dp"
+            android:contentDescription="@string/asl_letter"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:srcCompat="@drawable/clock"
+            tools:visibility="visible" />
+
+        <Button
+            android:id="@+id/sample_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="136dp"
+            android:text="@string/sample_ai"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.498"
+            app:layout_constraintStart_toStartOf="parent" />
+
+        <RadioGroup
+            android:id="@+id/button_group"
+            android:layout_width="270dp"
+            android:layout_height="224dp"
+            app:layout_constraintBottom_toTopOf="@+id/sample_button"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/aslLetter"
+            tools:visibility="invisible">
+
+            <RadioButton
+                android:id="@+id/B_button"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/b" />
+
+            <RadioButton
+                android:id="@+id/I_button"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/i" />
+
+            <RadioButton
+                android:id="@+id/L_button"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/l" />
+
+            <RadioButton
+                android:id="@+id/O_button"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/o" />
+
+            <RadioButton
+                android:id="@+id/Y_button"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/y" />
+
+            <RadioButton
+                android:id="@+id/one_button"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/_1" />
+        </RadioGroup>
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</LinearLayout>

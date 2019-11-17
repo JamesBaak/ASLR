@@ -1,0 +1,22 @@
+<resources>
+    <string name="app_name">ASLRApp</string>
+    <string name="welcome_to_the_aslr">Welcome to the ASLR!</string>
+    <string name="create_new_user">Create New User</string>
+    <string name="login">Login</string>
+    <string name="username">Username</string>
+    <string name="login">Login</string>
+    <string name="password">password</string>
+    <string name="create_a_new_user">Create a New User</string>
+    <string name="enter_username">Enter Username</string>
+    <string name="enter_password">Enter Password</string>
+    <string name="confirm_password">Confirm Password</string>
+    <string name="checkbox">CheckBox</string>
+    <string name="sample_ai">Sample AI</string>
+    <string name="asl_letter">ASL Letter</string>
+    <string name="b">B</string>
+    <string name="i">I</string>
+    <string name="l">L</string>
+    <string name="o">O</string>
+    <string name="y">Y</string>
+    <string name="_1">1</string>
+</resources>
