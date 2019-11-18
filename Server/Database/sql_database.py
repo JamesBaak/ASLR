@@ -65,12 +65,12 @@ class Database:
 
     def get_all_events(self):
         """
-        Query all rows in the MLResults table
+        Query all rows in the MLResults table that have a valid classification
         :param conn: the Connection object
         :return:
         """
         cur = self.conn.cursor()
-        cur.execute("SELECT * FROM MLResults")
+        cur.execute("SELECT * FROM MLResults WHERE class IS NOT 0")
     
         rows = cur.fetchall()
     
@@ -85,7 +85,7 @@ class Database:
         """
         user_id = self.get_user(username)[0] # First element of tuple is user ID
         cur = self.conn.cursor()
-        cur.execute("SELECT * FROM users WHERE userID=?", (user_id,))
+        cur.execute("SELECT * FROM users WHERE userID=? AND class IS NOT 0", (user_id,))
 
         rows = cur.fetchall()
 
