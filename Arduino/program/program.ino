@@ -62,18 +62,18 @@ void regularLoop() {
     for (byte receiver = 0; receiver < 14; receiver++) {
       muxSelect('r', receiver); // select receiver
       voltage = readVoltage(); // read data from receiver
-      sendVoltage(voltage, false)
+      sendVoltage(voltage, false);
     }
 
     digitalWrite(emitPin, LOW); // turn emitter off
   }
-  sendVoltage(voltage, true)
+  sendVoltage(voltage, true);
 }
 
 void testLoop() {
-  testEmitters();
+  testEmitters(); // test IR emitters
   for (byte i = 0; i < 14; i++) {
-    testRecv(i);
+    testRecv(i); // test IR receivers one at a time
   }
 }
 
@@ -114,7 +114,7 @@ void muxSelect(char selectPins, byte selectNum){
  * to read an analog input, so the maximum reading rate is about 10,000 times a second. */
 float readVoltage() {
   int sensorValue = analogRead(A0);
-  float voltage = sensorValue * (5.0 / 1023.0); //since we expect our max to be 5V, we put 5 in the conversion
+  float voltage = sensorValue * (5.0 / 1023.0); //conversion. since we expect our max to be 5V, we put 5 in the conversion
 
   return voltage;
 }
@@ -124,13 +124,53 @@ void testRecv(byte receiver) {
   muxSelect('r', receiver); // select receiver we want to test
 
   float voltage = 0;
+  float voltages[14];
   for (byte emitter = 0; emitter < 14; emitter++) {
     muxSelect('e', emitter);
     digitalWrite(emitPin, HIGH);
     voltage = readVoltage();
+    voltages[emitter] = voltage;
     //sendVoltage
     digitalWrite(emitPin, LOW);
   }
+}
+
+/* Test the voltage of the closest emitter to the receiver we are currently testing
+ * INPUT: 
+ *    byte recvnum -> the index of the ir receiver we are testing
+ *    float voltages[] -> voltages we measured in testRecv
+*/
+bool testClosest(byte recvnum, float voltages[]) {
+  if (recvnum >= 14) return false;
+  
+  float maxValue = voltages[recvnum]; //highest voltage should be the emitter right above the tested receiver
+  for(byte i = 0; i < 14; i++)
+  {
+      if(voltages[i] >= maxValue) {
+          // we'll loop through the voltage @ recvnum so we need to make sure we ignore it. else, we fail the test
+          if (i != recvnum) return false; 
+      }
+  }
+  return true;
+}
+
+/* Test the voltage of the farthest emitter to the receiver we are currently testing
+ * INPUT: 
+ *    byte recvnum -> the index of the ir receiver we are testing
+ *    float voltages[] -> voltages we measured in testRecv
+*/
+bool testFarthest(byte recvnum, float voltages[]) {
+  if (recvnum >= 14) return false;
+  
+  float minValue = recvnum < 7 ? voltages[recvnum + 7] : voltages[recvnum - 7]; //highest voltage should be the emitter across from the tested receiver.
+  for(byte i = 0; i < 14; i++)
+  {
+      if(voltages[i] <= minValue) {
+          // we'll loop through the voltage @ recvnum so we need to make sure we ignore it. else, we fail the test
+          if (i != recvnum) return false;
+      }
+  }
+  return true;
 }
 
 /* Loop through IR emitters in 1s intervals to make sure they all turn on.
