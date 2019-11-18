@@ -62,11 +62,12 @@ void regularLoop() {
     for (byte receiver = 0; receiver < 14; receiver++) {
       muxSelect('r', receiver); // select receiver
       voltage = readVoltage(); // read data from receiver
-      //sendVoltage
+      sendVoltage(voltage, false)
     }
 
     digitalWrite(emitPin, LOW); // turn emitter off
   }
+  sendVoltage(voltage, true)
 }
 
 void testLoop() {
@@ -143,5 +144,17 @@ void testEmitters() {
     delay(1000);
     digitalWrite(emitPin, LOW);
     delay(1000);
+  }
+}
+
+/* Sends the voltage value over serial if endInput is false. Otherwise send \n to notify
+ * the Pi that the stream of the readings has ended and a new reading start.
+ */
+void sendVoltage(float voltage, bool endInput) {
+  if (endInput) {
+    Serial.print("\n");
+  } else {
+    Serial.print(",");
+    Serial.print(voltage);
   }
 }
