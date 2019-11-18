@@ -16,7 +16,7 @@ import org.json.JSONObject;
 // ASL letter enum
 enum Letter
 {
-    B(0), I(1), L(2), O(3), Y(4), ONE(5), NONE (6);
+    B(1), I(2), L(3), O(4), Y(5), ONE(6), NONE (0);
 
     // integer value of enum for sending to server
     private final int value;

@@ -14,6 +14,12 @@ import androidx.appcompat.app.AppCompatActivity;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.IOException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.SocketException;
+import java.nio.charset.Charset;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
@@ -37,6 +43,11 @@ public class CreateNewUserActivity extends AppCompatActivity{
     private TextView mResultView;
     private Boolean developer = false;
     private CheckBox mDevBox;
+
+    private int PORT = 9999;
+    // TODO for testing puproses -> update when connected to Pi
+    private InetAddress ADDR;
+    private final static int PACKETSIZE = 10000;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -99,6 +110,9 @@ public class CreateNewUserActivity extends AppCompatActivity{
     }
 
     public void createNewUser(String username, String password, String confirmPassword, Boolean developer){
+        final Charset UTF8_CHARSET = Charset.forName("UTF-8");
+        DatagramSocket socket = null;
+        DatagramSocket receiveSoc = null;
 
         if (!confirmPassword.equals(password)){
             mResultView.setText(R.string.non_match_passwords_error);
@@ -112,11 +126,12 @@ public class CreateNewUserActivity extends AppCompatActivity{
         String encryptedPassword = _hashPassword(password, salt);
 
         //send user to database
-        JSONObject usernamRequest = new JSONObject();
+        JSONObject usernameRequest = new JSONObject();
         try {
-            usernamRequest.put("type", "create_user");
+            usernameRequest.put("type", "create_user");
         } catch (JSONException e){
-            // TODO do something with exception
+            Log.i(TAG, "JSON exception!");
+            e.printStackTrace();
         }
 
         Map m = new LinkedHashMap(4);
@@ -126,14 +141,77 @@ public class CreateNewUserActivity extends AppCompatActivity{
         m.put("developer", developer ? 1 : 0);
 
         try {
-            usernamRequest.put("payload", m);
+            usernameRequest.put("payload", m);
         } catch (JSONException e){
-            // TODO do something with exception
+            Log.i(TAG, "JSON exception!");
+            e.printStackTrace();
         }
 
-        // TODO wait for response or a time out
-        // TODO use reponse to determine if user was created successfully
-        Boolean result = true;
+        try{
+            socket = new DatagramSocket() ;
+            receiveSoc = new DatagramSocket(PORT) ;
+        } catch (SocketException e){
+            Log.i(TAG, "Socket exception!");
+            e.printStackTrace();
+            return;
+        }
+
+        socket.connect(ADDR, PORT);
+
+        try{
+            socket.setSoTimeout(30000);
+        } catch (SocketException e){
+            Log.i(TAG, "Socket exception!");
+            e.printStackTrace();
+            return;
+        }
+
+        byte[] sendJSON = usernameRequest.toString().getBytes(UTF8_CHARSET);
+
+        DatagramPacket packet = new DatagramPacket(sendJSON, sendJSON.length) ;
+
+        try {
+            socket.send( packet );
+        } catch (IOException e){
+            Log.i(TAG, "IO exception!");
+            e.printStackTrace();
+            return;
+        }
+
+        DatagramPacket receivePacket = new DatagramPacket(new byte[PACKETSIZE], PACKETSIZE) ;
+        try {
+            receiveSoc.receive(receivePacket);
+        } catch (IOException e){
+            Log.i(TAG, "IO exception!");
+            e.printStackTrace();
+            return;
+        }
+
+        JSONObject receiveJSON;
+
+        try {
+            receiveJSON = new JSONObject(receivePacket.getData().toString());
+        } catch (JSONException e){
+            Log.i(TAG, "JSON exception!");
+            e.printStackTrace();
+            return;
+        }
+
+        String awk = "";
+        try {
+            awk = receiveJSON.getString("type");
+        } catch (JSONException e){
+            Log.i(TAG, "JSON exception!");
+            e.printStackTrace();
+        }
+
+        Boolean result;
+
+        if (awk.equalsIgnoreCase("AWK")){
+            result = true;
+        } else {
+            result = false;
+        }
 
         if (result){
             mResultView.setText(R.string.success_new_user);

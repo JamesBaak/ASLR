@@ -13,6 +13,14 @@ import androidx.appcompat.app.AppCompatActivity;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.IOException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.SocketException;
+import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
+import java.nio.charset.Charset;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
@@ -51,6 +59,12 @@ public class LoginActivity extends AppCompatActivity{
     private EditText mUsername;
     private EditText mPassword;
     private TextView mResultView;
+
+    private int PORT = 9999;
+    // TODO for testing puproses -> update when connected to Pi
+    private InetAddress ADDR;
+    private final static int PACKETSIZE = 10000 ;
+
 
     private int numTries = 0;
 
@@ -108,27 +122,122 @@ public class LoginActivity extends AppCompatActivity{
     }
 
     public LoginResult login (String username, String password){
-        String databasePassword;
-        byte[] salt;
+        final Charset UTF8_CHARSET = Charset.forName("UTF-8");
+        DatagramSocket socket = null;
+        DatagramSocket receiveSoc = null;
+
+        String databasePassword = "";
+        byte[] salt = "".getBytes();
+        int developerInt = 0;
         Boolean developer = false;
 
+        try {
+            ADDR = InetAddress.getByName("localhost");
+        } catch (UnknownHostException e){
+            Log.i(TAG, "Unknown host exception!");
+            e.printStackTrace();
+            return new LoginResult(false, false);
+        }
+
         // get salt value, databasePassword and developer status
-        JSONObject usernamRequest = new JSONObject();
+        JSONObject usernameRequest = new JSONObject();
         try {
-            usernamRequest.put("type", "get_user");
+            usernameRequest.put("type", "get_user");
         } catch (JSONException e){
-            // TODO do something with exception
+            Log.i(TAG, "JSON exception!");
+            e.printStackTrace();
         }
 
         try {
-            usernamRequest.put("payload", username);
+            usernameRequest.put("payload", username);
         } catch (JSONException e){
-            // TODO do something with excpetion
+            Log.i(TAG, "JSON exception!");
+            e.printStackTrace();
         }
 
-        // TODO process response and print error if unsuccessful
-        databasePassword = "password";
-        salt = "FFFF".getBytes();
+        try{
+            socket = new DatagramSocket() ;
+            receiveSoc = new DatagramSocket(PORT) ;
+        } catch (SocketException e){
+            Log.i(TAG, "Socket exception!");
+            e.printStackTrace();
+            return new LoginResult(false, false);
+        }
+
+        socket.connect(ADDR, PORT);
+
+        try{
+            socket.setSoTimeout(30000);
+        } catch (SocketException e){
+            Log.i(TAG, "Socket exception!");
+            e.printStackTrace();
+            return new LoginResult(false, false);
+        }
+
+        byte[] sendJSON = usernameRequest.toString().getBytes(UTF8_CHARSET);
+
+        DatagramPacket packet = new DatagramPacket(sendJSON, sendJSON.length) ;
+
+        try {
+            socket.send( packet );
+        } catch (IOException e){
+            Log.i(TAG, "IO exception!");
+            e.printStackTrace();
+            return new LoginResult(false, false);
+        }
+
+        DatagramPacket receivePacket = new DatagramPacket(new byte[PACKETSIZE], PACKETSIZE) ;
+        try {
+            receiveSoc.receive(receivePacket);
+        } catch (IOException e){
+            Log.i(TAG, "IO exception!");
+            e.printStackTrace();
+            return new LoginResult(false, false);
+        }
+
+        JSONObject receiveJSON;
+
+        try {
+            receiveJSON = new JSONObject(receivePacket.getData().toString());
+        } catch (JSONException e){
+            Log.i(TAG, "JSON exception!");
+            e.printStackTrace();
+            return new LoginResult(false, false);
+        }
+
+        JSONObject payload = new JSONObject();
+
+        try {
+            payload = receiveJSON.getJSONObject("payload");
+        } catch (JSONException e){
+            Log.i(TAG, "JSON exception!");
+            e.printStackTrace();
+        }
+
+        try {
+            databasePassword = payload.get("password").toString();
+        } catch (JSONException e){
+            Log.i(TAG, "JSON exception!");
+            e.printStackTrace();
+        }
+
+        try {
+            salt = payload.get("salt").toString().getBytes();
+        } catch (JSONException e){
+            Log.i(TAG, "JSON exception!");
+            e.printStackTrace();
+        }
+
+        try {
+            developerInt = payload.getInt("developer");
+        } catch (JSONException e){
+            Log.i(TAG, "JSON exception!");
+            e.printStackTrace();
+        }
+
+        if (developerInt == 1){
+            developer = true;
+        }// else developer is false, which is the default
 
         String encryptedPassword = _hashPassword(password, salt);
 
@@ -195,6 +304,7 @@ public class LoginActivity extends AppCompatActivity{
         }
         return hash.toString();
     }
+
 
 
 }
