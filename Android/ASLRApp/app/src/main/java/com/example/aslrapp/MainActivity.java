@@ -10,7 +10,7 @@ import android.widget.Button;
 
 public class MainActivity extends AppCompatActivity {
 
-    private  final String TAG = this.getClass().getSimpleName() + " @" + System.identityHashCode(this);
+    private  final String TAG = "MainActivity";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

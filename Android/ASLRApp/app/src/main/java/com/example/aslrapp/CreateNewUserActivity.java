@@ -19,6 +19,7 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.nio.charset.Charset;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
@@ -45,7 +46,6 @@ public class CreateNewUserActivity extends AppCompatActivity{
     private CheckBox mDevBox;
 
     private int PORT = 9999;
-    // TODO for testing puproses -> update when connected to Pi
     private InetAddress ADDR;
     private final static int PACKETSIZE = 10000;
 
@@ -60,6 +60,13 @@ public class CreateNewUserActivity extends AppCompatActivity{
         mCreateNewUserButton = (Button) findViewById(R.id.create_new_user_button);
         mResultView = (TextView) findViewById(R.id.resultView);
         mDevBox = (CheckBox) findViewById(R.id.developerBox);
+
+        // TODO for testing purposes -> update when connected to Pi
+        try {
+            ADDR = InetAddress.getByName("10.0.2.2");
+        } catch (UnknownHostException e){
+            //TODO
+        }
 
         mResultView.setVisibility(View.INVISIBLE);
 

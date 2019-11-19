@@ -18,7 +18,6 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
-import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.nio.charset.Charset;
 import java.security.NoSuchAlgorithmException;
@@ -54,16 +53,16 @@ final class LoginResult {
 
 public class LoginActivity extends AppCompatActivity{
 
-    private  final String TAG = this.getClass().getSimpleName() + " @" + System.identityHashCode(this);
+    private  final String TAG = "LoginActivity";
+
     private Button mLoginButton;
     private EditText mUsername;
     private EditText mPassword;
     private TextView mResultView;
 
     private int PORT = 9999;
-    // TODO for testing puproses -> update when connected to Pi
     private InetAddress ADDR;
-    private final static int PACKETSIZE = 10000 ;
+    private final static int PACKETSIZE = 1000;
 
 
     private int numTries = 0;
@@ -80,10 +79,11 @@ public class LoginActivity extends AppCompatActivity{
 
         mResultView.setVisibility(View.INVISIBLE);
 
+        Log.i(TAG, "Before Login");
+
         mLoginButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
                 Log.i(TAG, "LoginButton pressed");
                 String username = mUsername.getText().toString().trim();
                 String password = mPassword.getText().toString().trim();
@@ -91,6 +91,7 @@ public class LoginActivity extends AppCompatActivity{
                 try {
                     _processInput(username);
                 }catch (InputException e){
+                    Log.w(TAG, "Invalid username");
                     mResultView.setText("Invalid Username. \nPlease ensure the username only contains alphanumeric characters");
                     mResultView.setVisibility(View.VISIBLE);
                     return;
@@ -99,23 +100,24 @@ public class LoginActivity extends AppCompatActivity{
                 try {
                     _processInput(password);
                 }catch (InputException e){
+                    Log.w(TAG, "Invalid password");
                     mResultView.setText("Invalid Password. \nPlease ensure the password only contains alphanumeric characters");
                     mResultView.setVisibility(View.VISIBLE);
                     return;
                 }
 
                 LoginResult result = login(username, password);
-                System.out.println("Completed login function");
+                Log.i(TAG, "Completed Login Function");
 
                 if (result.getResult() && result.getDeveloper()){
                     Log.i(TAG, "Successful login as developer");
                     Intent DeveloperIntent = new Intent(LoginActivity.this, DeveloperActivity.class);
                     LoginActivity.this.startActivity(DeveloperIntent);
                 } else if (result.getResult()){
-                    Log.i(TAG, "Successful login as developer");
+                    Log.i(TAG, "Successful login as user");
                     Intent SampleIntent = new Intent(LoginActivity.this, SampleActivity.class);
                     LoginActivity.this.startActivity(SampleIntent);
-                }
+                } // else login not successful and user stays on login page
             }
         });
 
@@ -131,10 +133,11 @@ public class LoginActivity extends AppCompatActivity{
         int developerInt = 0;
         Boolean developer = false;
 
+        // TODO for testing purposes -> update when connected to Pi
         try {
-            ADDR = InetAddress.getByName("localhost");
+            ADDR = InetAddress.getByName("10.0.2.2");
         } catch (UnknownHostException e){
-            Log.i(TAG, "Unknown host exception!");
+            Log.e(TAG, "Unknown host exception when creating address!");
             e.printStackTrace();
             return new LoginResult(false, false);
         }
@@ -144,14 +147,14 @@ public class LoginActivity extends AppCompatActivity{
         try {
             usernameRequest.put("type", "get_user");
         } catch (JSONException e){
-            Log.i(TAG, "JSON exception!");
+            Log.e(TAG, "JSON exception when adding type to usernameRequest!");
             e.printStackTrace();
         }
 
         try {
             usernameRequest.put("payload", username);
         } catch (JSONException e){
-            Log.i(TAG, "JSON exception!");
+            Log.e(TAG, "JSON exception when adding payload to usernameRequest!");
             e.printStackTrace();
         }
 
@@ -159,29 +162,29 @@ public class LoginActivity extends AppCompatActivity{
             socket = new DatagramSocket() ;
             receiveSoc = new DatagramSocket(PORT) ;
         } catch (SocketException e){
-            Log.i(TAG, "Socket exception!");
+            Log.e(TAG, "Socket exception when creating socket and receiveSoc!");
+            Log.e("Udp:", "Socket Error:", e);
             e.printStackTrace();
             return new LoginResult(false, false);
         }
 
-        socket.connect(ADDR, PORT);
 
         try{
             socket.setSoTimeout(30000);
         } catch (SocketException e){
-            Log.i(TAG, "Socket exception!");
+            Log.e(TAG, "Socket exception when setting timeout!");
             e.printStackTrace();
             return new LoginResult(false, false);
         }
 
         byte[] sendJSON = usernameRequest.toString().getBytes(UTF8_CHARSET);
 
-        DatagramPacket packet = new DatagramPacket(sendJSON, sendJSON.length) ;
+        DatagramPacket packet = new DatagramPacket(sendJSON, sendJSON.length, ADDR, PORT) ;
 
         try {
             socket.send( packet );
         } catch (IOException e){
-            Log.i(TAG, "IO exception!");
+            Log.e(TAG, "IO exception when sending packet!");
             e.printStackTrace();
             return new LoginResult(false, false);
         }
@@ -190,7 +193,7 @@ public class LoginActivity extends AppCompatActivity{
         try {
             receiveSoc.receive(receivePacket);
         } catch (IOException e){
-            Log.i(TAG, "IO exception!");
+            Log.e(TAG, "IO exception when receiving packet!");
             e.printStackTrace();
             return new LoginResult(false, false);
         }
@@ -200,7 +203,7 @@ public class LoginActivity extends AppCompatActivity{
         try {
             receiveJSON = new JSONObject(receivePacket.getData().toString());
         } catch (JSONException e){
-            Log.i(TAG, "JSON exception!");
+            Log.e(TAG, "JSON exception when creating receiveJSON!");
             e.printStackTrace();
             return new LoginResult(false, false);
         }
@@ -210,28 +213,28 @@ public class LoginActivity extends AppCompatActivity{
         try {
             payload = receiveJSON.getJSONObject("payload");
         } catch (JSONException e){
-            Log.i(TAG, "JSON exception!");
+            Log.e(TAG, "JSON exception when getting payload from receiveJSON!");
             e.printStackTrace();
         }
 
         try {
             databasePassword = payload.get("password").toString();
         } catch (JSONException e){
-            Log.i(TAG, "JSON exception!");
+            Log.e(TAG, "JSON exception when getting databasePassword!");
             e.printStackTrace();
         }
 
         try {
             salt = payload.get("salt").toString().getBytes();
         } catch (JSONException e){
-            Log.i(TAG, "JSON exception!");
+            Log.e(TAG, "JSON exception when getting salt value!");
             e.printStackTrace();
         }
 
         try {
             developerInt = payload.getInt("developer");
         } catch (JSONException e){
-            Log.i(TAG, "JSON exception!");
+            Log.e(TAG, "JSON exception when getting developer status!");
             e.printStackTrace();
         }
 
@@ -242,7 +245,7 @@ public class LoginActivity extends AppCompatActivity{
         String encryptedPassword = _hashPassword(password, salt);
 
         if (encryptedPassword == null) {
-            Log.i(TAG, "Error Hashing Password");
+            Log.w(TAG, "Error Hashing Password");
             mResultView.setText(R.string.hash_error);
             mResultView.setVisibility(View.VISIBLE);
         } else if (databasePassword.equals(encryptedPassword)){
@@ -265,7 +268,7 @@ public class LoginActivity extends AppCompatActivity{
             try {
                 TimeUnit.MINUTES.sleep(5);
             } catch (InterruptedException e){
-                Log.i(TAG, "Sleep Interrupted");
+                Log.e(TAG, "Interrupted Exception when sleeping for 5 minuets");
             }
 
             mLoginButton.setEnabled(true);
@@ -290,7 +293,7 @@ public class LoginActivity extends AppCompatActivity{
         try {
             factory = SecretKeyFactory.getInstance("PBEwithHmacSHA1");
         } catch (NoSuchAlgorithmException e){
-            Log.i(TAG, "No such algorithm: PBEwithHmacSHA1");
+            Log.e(TAG, "No such algorithm exception when hashing password");
             e.printStackTrace();
             return null;
         }
@@ -298,7 +301,7 @@ public class LoginActivity extends AppCompatActivity{
         try {
             hash = factory.generateSecret(spec).getEncoded();
         } catch (InvalidKeySpecException e) {
-            Log.i(TAG, "Invalid key exception!");
+            Log.e(TAG, "Invalid key exception when hashing password!");
             e.printStackTrace();
             return null;
         }
