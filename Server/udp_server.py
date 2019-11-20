@@ -90,7 +90,7 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
             )
         else:
             socket.sendto(
-                bytes(json.dumps(self.__constructJSON__(ERROR, "ML PI Error...")), "utf-8"),
+                bytes(json.dumps(self.__constructJSON__(ERROR, "ML PI Error...: {}".format(data))), "utf-8"),
                 self.client_address
             )
 
@@ -132,7 +132,8 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
         payload [string] - The username of the user to load the ML PI with. If blank string (""),
                         then load all data records.
         """
-        # Local function
+        # Local function to transform records from MLResults to
+        # JSON object
         def transform(record):
             return {
                 "pred": record[2],
@@ -157,7 +158,7 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
         rec_len = len(records)
         div = rec_len // MAX_REC
         remainder = rec_len % MAX_REC
-        request = copy.deepcopy(RECORDS) # Send one record packet
+        request = copy.deepcopy(RECORDS) # Reuse one record packet
 
         if (div == 0): # We can fit all records in one packet
             request["payload"]["records"] = records
