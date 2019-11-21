@@ -108,7 +108,7 @@ public class LoginActivity extends AppCompatActivity {
                 if (!lockFlag) {
                     mResultView.setVisibility(View.INVISIBLE);
 
-                    /*Boolean sendResult = sendServer(username);
+                    Boolean sendResult = sendServer(username);
 
                     // Login failed for some reason
                     if(!sendResult){
@@ -120,11 +120,11 @@ public class LoginActivity extends AppCompatActivity {
                     // Login failed for some reason
                     if (receiveString == null){
                        return;
-                    }*/
+                    }
 
-                    //LoginResult result = login(receiveString, password);
+                    LoginResult result = login(receiveString, password);
 
-                    LoginResult result = login( "{\"username\": \"userTest\", \"saltValue\": \"[B@6a2179d\", \"password\": \"[B@c8d1674\", \"developer\": \"0\"}", password);
+                    //LoginResult result = login( "{\"username\": \"userTest\", \"saltValue\": \"[B@6a2179d\", \"password\": \"[B@c8d1674\", \"developer\": \"0\"}", password);
 
                     Log.i(TAG, "Completed Login Function");
 
