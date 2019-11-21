@@ -9,7 +9,6 @@
     <string name="enter_username">Enter Username</string>
     <string name="enter_password">Enter Password</string>
     <string name="confirm_password">Confirm Password</string>
-    <string name="checkbox">CheckBox</string>
     <string name="sample_ai">Sample AI</string>
     <string name="asl_letter">ASL Letter</string>
     <string name="b">B</string>
@@ -24,4 +23,5 @@
     <string name="access_denied">Access Denied</string>
     <string name="train_ai">Train AI</string>
     <string name="developer">Developer</string>
+    <string name="fail_create_user">Failed to create new user</string>
 </resources>

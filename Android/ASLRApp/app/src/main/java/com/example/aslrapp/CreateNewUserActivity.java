@@ -2,6 +2,7 @@ package com.example.aslrapp;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.StrictMode;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -14,7 +15,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -35,7 +35,9 @@ import javax.crypto.spec.PBEKeySpec;
 
 public class CreateNewUserActivity extends AppCompatActivity{
 
-    private  final String TAG = this.getClass().getSimpleName() + " @" + System.identityHashCode(this);
+    private  final String TAG = "CreateNewUserActivity";
+    private final Charset UTF8_CHARSET = Charset.forName("UTF-8");
+
     private static final Random RANDOM = new SecureRandom();
     private EditText mUsername;
     private EditText mPassword;
@@ -54,6 +56,9 @@ public class CreateNewUserActivity extends AppCompatActivity{
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_create_new_user);
 
+        StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
+        StrictMode.setThreadPolicy(policy);
+
         mUsername = (EditText) findViewById(R.id.usernameEdit);
         mPassword = (EditText) findViewById(R.id.passwordEdit);
         mConfirmPassword = (EditText) findViewById(R.id.confirmPasswordEdit);
@@ -65,7 +70,8 @@ public class CreateNewUserActivity extends AppCompatActivity{
         try {
             ADDR = InetAddress.getByName("10.0.2.2");
         } catch (UnknownHostException e){
-            //TODO
+            Log.e(TAG, "Unknown host exception when creating address!");
+            e.printStackTrace();
         }
 
         mResultView.setVisibility(View.INVISIBLE);
@@ -81,35 +87,41 @@ public class CreateNewUserActivity extends AppCompatActivity{
             @Override
             public void onClick(View v) {
 
-                Log.i(TAG, "LoginButton pressed");
+                Log.i(TAG, "CreateNewUserButton pressed");
                 String username = mUsername.getText().toString().trim();
                 String password = mPassword.getText().toString().trim();
                 String confirmPassword = mConfirmPassword.getText().toString().trim();
                 Boolean dev = mDevBox.isChecked();
 
-                try {
-                    _processInput(username);
-                } catch (InputException e) {
+                Boolean result;
+
+
+                result = _processInput(username);
+                if (!result){
                     mResultView.setText("Invalid Username\n. Please ensure the username only contains alphanumeric characters");
                     mResultView.setVisibility(View.VISIBLE);
                     return;
                 }
 
-                try {
-                    _processInput(password);
-                } catch (InputException e) {
+                Log.d(TAG, "Username: " + username);
+
+                result = _processInput(password);
+                if(!result){
                     mResultView.setText("Invalid Password\n. Please ensure the password only contains alphanumeric characters");
                     mResultView.setVisibility(View.VISIBLE);
                     return;
                 }
 
-                try {
-                    _processInput(confirmPassword);
-                } catch (InputException e) {
+                Log.d(TAG, "Password: " + password);
+
+                result = _processInput(confirmPassword);
+                if (!result){
                     mResultView.setText("Invalid Confirmation Password\n. Please ensure the password only contains alphanumeric characters");
                     mResultView.setVisibility(View.VISIBLE);
                     return;
                 }
+
+                Log.d(TAG, "Confirmation password: " + confirmPassword);
 
                 createNewUser(username, password, confirmPassword, dev);
             }
@@ -117,9 +129,7 @@ public class CreateNewUserActivity extends AppCompatActivity{
     }
 
     public void createNewUser(String username, String password, String confirmPassword, Boolean developer){
-        final Charset UTF8_CHARSET = Charset.forName("UTF-8");
-        DatagramSocket socket = null;
-        DatagramSocket receiveSoc = null;
+        JSONObject receiveJSON;
 
         if (!confirmPassword.equals(password)){
             mResultView.setText(R.string.non_match_passwords_error);
@@ -132,12 +142,15 @@ public class CreateNewUserActivity extends AppCompatActivity{
 
         String encryptedPassword = _hashPassword(password, salt);
 
+        Log.d(TAG, "Salt: " + salt.toString());
+        Log.d(TAG, "Encrypted password: " + encryptedPassword);
+
         //send user to database
         JSONObject usernameRequest = new JSONObject();
         try {
             usernameRequest.put("type", "create_user");
         } catch (JSONException e){
-            Log.i(TAG, "JSON exception!");
+            Log.e(TAG, "JSON exception!");
             e.printStackTrace();
         }
 
@@ -150,71 +163,43 @@ public class CreateNewUserActivity extends AppCompatActivity{
         try {
             usernameRequest.put("payload", m);
         } catch (JSONException e){
-            Log.i(TAG, "JSON exception!");
+            Log.e(TAG, "JSON exception!");
             e.printStackTrace();
         }
 
-        try{
-            socket = new DatagramSocket() ;
-            receiveSoc = new DatagramSocket(PORT) ;
-        } catch (SocketException e){
-            Log.i(TAG, "Socket exception!");
-            e.printStackTrace();
+        Boolean sendResult = sendServer(usernameRequest);
+
+        // Create new user request failed for some reason
+        if(!sendResult){
             return;
         }
 
-        socket.connect(ADDR, PORT);
+        String receiveString = receivePacket();
 
-        try{
-            socket.setSoTimeout(30000);
-        } catch (SocketException e){
-            Log.i(TAG, "Socket exception!");
-            e.printStackTrace();
+        // Create new user request failed for some reason
+        if (receiveString == null){
             return;
         }
-
-        byte[] sendJSON = usernameRequest.toString().getBytes(UTF8_CHARSET);
-
-        DatagramPacket packet = new DatagramPacket(sendJSON, sendJSON.length) ;
 
         try {
-            socket.send( packet );
-        } catch (IOException e){
-            Log.i(TAG, "IO exception!");
-            e.printStackTrace();
-            return;
-        }
-
-        DatagramPacket receivePacket = new DatagramPacket(new byte[PACKETSIZE], PACKETSIZE) ;
-        try {
-            receiveSoc.receive(receivePacket);
-        } catch (IOException e){
-            Log.i(TAG, "IO exception!");
-            e.printStackTrace();
-            return;
-        }
-
-        JSONObject receiveJSON;
-
-        try {
-            receiveJSON = new JSONObject(receivePacket.getData().toString());
+            receiveJSON = new JSONObject(receiveString);
         } catch (JSONException e){
-            Log.i(TAG, "JSON exception!");
+            Log.e(TAG, "JSON exception!");
             e.printStackTrace();
             return;
         }
 
-        String awk = "";
+        String ack = "";
         try {
-            awk = receiveJSON.getString("type");
+            ack = receiveJSON.getString("type");
         } catch (JSONException e){
-            Log.i(TAG, "JSON exception!");
+            Log.e(TAG, "JSON exception!");
             e.printStackTrace();
         }
 
         Boolean result;
 
-        if (awk.equalsIgnoreCase("AWK")){
+        if (ack.equalsIgnoreCase("ACK")){
             result = true;
         } else {
             result = false;
@@ -227,22 +212,25 @@ public class CreateNewUserActivity extends AppCompatActivity{
             try {
                 TimeUnit.SECONDS.sleep(3);
             } catch (InterruptedException e){
-                Log.i(TAG, "Sleep Interrupted");
+                Log.e(TAG, "Sleep Interrupted");
             }
 
             Intent MainIntent = new Intent(CreateNewUserActivity.this, MainActivity.class);
             CreateNewUserActivity.this.startActivity(MainIntent);
         } else {
-            // TODO print error message if user was not created successfully
+            mResultView.setVisibility(View.VISIBLE);
+            mResultView.setText(R.string.fail_create_user);
         }
     }
 
-    private void _processInput(String input) throws InputException{
+    private Boolean _processInput(String input) {
         if (input == null){
-            throw new InputException("Empty input");
+            return false;
         } else if (!input.matches("[a-zA-Z0-9]+")){
-            throw new InputException("Non alphanumeric characters in input");
+            return false;
         }
+
+        return true;
     }
 
     private String _hashPassword(String password, byte[] salt){
@@ -266,5 +254,75 @@ public class CreateNewUserActivity extends AppCompatActivity{
             return null;
         }
         return hash.toString();
+    }
+
+    protected Boolean sendServer(JSONObject jsonPacket){
+        DatagramSocket socket = null;
+
+        try{
+            socket = new DatagramSocket() ;
+        } catch (SocketException e){
+            Log.e(TAG, "Socket exception when creating socket and receiveSoc!");
+            Log.e(TAG, "Socket Error:", e);
+            e.printStackTrace();
+            return false;
+        }
+
+        try{
+            socket.setSoTimeout(30000);
+        } catch (SocketException e){
+            Log.e(TAG, "Socket exception when setting timeout!");
+            e.printStackTrace();
+            return false;
+        }
+
+        byte[] sendJSON = jsonPacket.toString().getBytes(UTF8_CHARSET);
+
+        DatagramPacket packet = new DatagramPacket(sendJSON, sendJSON.length, ADDR, PORT);
+
+        try {
+            socket.send( packet );
+        } catch (Exception e){
+            Log.e(TAG, "Exception when sending packet!");
+            Log.e("Udp:", "Socket Exception:", e);
+            e.printStackTrace();
+            return false;
+        }
+
+        return true;
+    }
+
+    protected String receivePacket(){
+        DatagramSocket receiveSoc = null;
+
+        try{
+            receiveSoc = new DatagramSocket(PORT) ;
+        } catch (SocketException e){
+            Log.e(TAG, "Socket exception when creating socket and receiveSoc!");
+            Log.e(TAG, "Socket Error:", e);
+            e.printStackTrace();
+            return null;
+        }
+
+        try{
+            receiveSoc.setSoTimeout(30000);
+        } catch (SocketException e){
+            Log.e(TAG, "Socket exception when setting timeout!");
+            e.printStackTrace();
+            return null;
+        }
+
+        DatagramPacket receivePacket = new DatagramPacket(new byte[PACKETSIZE], PACKETSIZE) ;
+        try {
+            receiveSoc.receive(receivePacket);
+        } catch (Exception e){
+            Log.e(TAG, "Exception when receiving packet!");
+            Log.e(TAG, "Exception: ", e);
+            e.printStackTrace();
+            return null;
+        }
+
+        return receivePacket.getData().toString();
+
     }
 }

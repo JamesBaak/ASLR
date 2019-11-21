@@ -1,7 +1,9 @@
 package com.example.aslrapp;
 
 import android.content.Intent;
+import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.StrictMode;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -13,7 +15,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -27,11 +28,6 @@ import java.util.concurrent.TimeUnit;
 
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
-
-
-class InputException extends Exception {
-    InputException(String str) { super(str); }
-}
 
 final class LoginResult {
     private final Boolean result;
@@ -51,9 +47,13 @@ final class LoginResult {
     }
 }
 
-public class LoginActivity extends AppCompatActivity{
+public class LoginActivity extends AppCompatActivity {
 
-    private  final String TAG = "LoginActivity";
+    private final String TAG = "LoginActivity";
+    private final Charset UTF8_CHARSET = Charset.forName("UTF-8");
+
+    protected Boolean lockFlag = false;
+    private final int SLEEPTIME = 1;
 
     private Button mLoginButton;
     private EditText mUsername;
@@ -64,13 +64,23 @@ public class LoginActivity extends AppCompatActivity{
     private InetAddress ADDR;
     private final static int PACKETSIZE = 1000;
 
-
     private int numTries = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
+
+        StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
+        StrictMode.setThreadPolicy(policy);
+
+        // TODO for testing purposes -> update when connected to Pi
+        try {
+            ADDR = InetAddress.getByName("10.0.2.2");
+        } catch (UnknownHostException e){
+            Log.e(TAG, "Unknown host exception when creating address!");
+            e.printStackTrace();
+        }
 
         mLoginButton = (Button) findViewById(R.id.login_button);
         mUsername = (EditText) findViewById(R.id.username_edit_text);
@@ -79,8 +89,6 @@ public class LoginActivity extends AppCompatActivity{
 
         mResultView.setVisibility(View.INVISIBLE);
 
-        Log.i(TAG, "Before Login");
-
         mLoginButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -88,137 +96,110 @@ public class LoginActivity extends AppCompatActivity{
                 String username = mUsername.getText().toString().trim();
                 String password = mPassword.getText().toString().trim();
 
-                try {
-                    _processInput(username);
-                }catch (InputException e){
-                    Log.w(TAG, "Invalid username");
-                    mResultView.setText("Invalid Username. \nPlease ensure the username only contains alphanumeric characters");
+                Boolean validate = validate(username, password);
+
+                if (!validate){
+                    mResultView.setText("Invalid Input. \nPlease ensure the username only contains alphanumeric characters");
                     mResultView.setVisibility(View.VISIBLE);
                     return;
                 }
 
-                try {
-                    _processInput(password);
-                }catch (InputException e){
-                    Log.w(TAG, "Invalid password");
-                    mResultView.setText("Invalid Password. \nPlease ensure the password only contains alphanumeric characters");
+                if (!lockFlag) {
+                    mResultView.setVisibility(View.INVISIBLE);
+
+                    //Boolean sendResult = sendServer(username);
+
+                    // Login failed for some reason
+                    //if(!sendResult){
+                     //   return;
+                    //}
+
+                    //String receiveString = receivePacket();
+
+                    // Login failed for some reason
+                    //if (receiveString == null){
+                     //   return;
+                    //}
+
+                    String receiveString = "{username: userTest, saltValue: [B@26dfc36, password: [B@f67b9d1, developer: 0}";
+
+                    LoginResult result = login(receiveString, password);
+                    Log.i(TAG, "Completed Login Function");
+
+                    if (result.getResult() && result.getDeveloper()) {
+                        Log.i(TAG, "Successful login as developer");
+                        Intent DeveloperIntent = new Intent(LoginActivity.this, DeveloperActivity.class);
+                        LoginActivity.this.startActivity(DeveloperIntent);
+                    } else if (result.getResult()) {
+                        Log.i(TAG, "Successful login as user");
+                        Intent SampleIntent = new Intent(LoginActivity.this, SampleActivity.class);
+                        LoginActivity.this.startActivity(SampleIntent);
+                    } else {
+                        mResultView.setText(R.string.access_denied);
+                        mResultView.setVisibility(View.VISIBLE);
+                    }
+                } else{
                     mResultView.setVisibility(View.VISIBLE);
-                    return;
+                    mResultView.setText("Lockout due to maximum number of login attempts");
                 }
-
-                LoginResult result = login(username, password);
-                Log.i(TAG, "Completed Login Function");
-
-                if (result.getResult() && result.getDeveloper()){
-                    Log.i(TAG, "Successful login as developer");
-                    Intent DeveloperIntent = new Intent(LoginActivity.this, DeveloperActivity.class);
-                    LoginActivity.this.startActivity(DeveloperIntent);
-                } else if (result.getResult()){
-                    Log.i(TAG, "Successful login as user");
-                    Intent SampleIntent = new Intent(LoginActivity.this, SampleActivity.class);
-                    LoginActivity.this.startActivity(SampleIntent);
-                } // else login not successful and user stays on login page
             }
         });
-
     }
 
-    public LoginResult login (String username, String password){
-        final Charset UTF8_CHARSET = Charset.forName("UTF-8");
-        DatagramSocket socket = null;
-        DatagramSocket receiveSoc = null;
+    public Boolean validate(String username, String password){
+        Boolean result;
+
+        result = _processInput(username);
+
+        if (!result){
+            Log.w(TAG, "Invalid username");
+            return false;
+        }
+
+        Log.d(TAG, "Username: " + username);
+
+        result = _processInput(password);
+        if (!result){
+            Log.w(TAG, "Invalid password");
+            return false;
+        }
+
+        Log.d(TAG, "Password: " + password);
+
+        Log.d(TAG, "validate returning true");
+        return true;
+    }
+
+    public LoginResult login (String receiveString, String password){
+        JSONObject receiveJSON;
 
         String databasePassword = "";
         byte[] salt = "".getBytes();
         int developerInt = 0;
         Boolean developer = false;
 
-        // TODO for testing purposes -> update when connected to Pi
         try {
-            ADDR = InetAddress.getByName("10.0.2.2");
-        } catch (UnknownHostException e){
-            Log.e(TAG, "Unknown host exception when creating address!");
-            e.printStackTrace();
-            return new LoginResult(false, false);
-        }
-
-        // get salt value, databasePassword and developer status
-        JSONObject usernameRequest = new JSONObject();
-        try {
-            usernameRequest.put("type", "get_user");
-        } catch (JSONException e){
-            Log.e(TAG, "JSON exception when adding type to usernameRequest!");
-            e.printStackTrace();
-        }
-
-        try {
-            usernameRequest.put("payload", username);
-        } catch (JSONException e){
-            Log.e(TAG, "JSON exception when adding payload to usernameRequest!");
-            e.printStackTrace();
-        }
-
-        try{
-            socket = new DatagramSocket() ;
-            receiveSoc = new DatagramSocket(PORT) ;
-        } catch (SocketException e){
-            Log.e(TAG, "Socket exception when creating socket and receiveSoc!");
-            Log.e("Udp:", "Socket Error:", e);
-            e.printStackTrace();
-            return new LoginResult(false, false);
-        }
-
-
-        try{
-            socket.setSoTimeout(30000);
-        } catch (SocketException e){
-            Log.e(TAG, "Socket exception when setting timeout!");
-            e.printStackTrace();
-            return new LoginResult(false, false);
-        }
-
-        byte[] sendJSON = usernameRequest.toString().getBytes(UTF8_CHARSET);
-
-        DatagramPacket packet = new DatagramPacket(sendJSON, sendJSON.length, ADDR, PORT) ;
-
-        try {
-            socket.send( packet );
-        } catch (IOException e){
-            Log.e(TAG, "IO exception when sending packet!");
-            e.printStackTrace();
-            return new LoginResult(false, false);
-        }
-
-        DatagramPacket receivePacket = new DatagramPacket(new byte[PACKETSIZE], PACKETSIZE) ;
-        try {
-            receiveSoc.receive(receivePacket);
-        } catch (IOException e){
-            Log.e(TAG, "IO exception when receiving packet!");
-            e.printStackTrace();
-            return new LoginResult(false, false);
-        }
-
-        JSONObject receiveJSON;
-
-        try {
-            receiveJSON = new JSONObject(receivePacket.getData().toString());
+            receiveJSON = new JSONObject(receiveString);
         } catch (JSONException e){
             Log.e(TAG, "JSON exception when creating receiveJSON!");
             e.printStackTrace();
             return new LoginResult(false, false);
         }
 
+        Log.d(TAG, "receiveJSON: " + receiveJSON.toString());
+
         JSONObject payload = new JSONObject();
 
-        try {
+        /*try {
             payload = receiveJSON.getJSONObject("payload");
         } catch (JSONException e){
             Log.e(TAG, "JSON exception when getting payload from receiveJSON!");
             e.printStackTrace();
-        }
+        }*/
 
         try {
-            databasePassword = payload.get("password").toString();
+            //databasePassword = payload.get("password").toString();
+            databasePassword = receiveJSON.get("password").toString();
         } catch (JSONException e){
             Log.e(TAG, "JSON exception when getting databasePassword!");
             e.printStackTrace();
@@ -246,43 +227,36 @@ public class LoginActivity extends AppCompatActivity{
 
         if (encryptedPassword == null) {
             Log.w(TAG, "Error Hashing Password");
-            mResultView.setText(R.string.hash_error);
-            mResultView.setVisibility(View.VISIBLE);
+            return new LoginResult(false, false);
         } else if (databasePassword.equals(encryptedPassword)){
-            mResultView.setVisibility(View.INVISIBLE);
             numTries = 0;
             return new LoginResult(true, developer);
         }
 
         numTries ++;
-        mResultView.setText(R.string.access_denied);
-        mResultView.setVisibility(View.VISIBLE);
 
         if (numTries == 3){
             numTries = 0;
 
-            mResultView.setText("Five minute timeout:\n too many login attempts");
-            mResultView.setVisibility(View.VISIBLE);
+            SleepTask sleepTask = new SleepTask();
+            sleepTask.execute(SLEEPTIME);
 
-            mLoginButton.setEnabled(false);
-            try {
-                TimeUnit.MINUTES.sleep(5);
-            } catch (InterruptedException e){
-                Log.e(TAG, "Interrupted Exception when sleeping for 5 minuets");
-            }
-
-            mLoginButton.setEnabled(true);
+            //mLoginButton.setEnabled(false);
+            lockFlag = true;
         }
 
         return new LoginResult(false, false);
     }
 
-    private void _processInput(String input) throws InputException{
+    private Boolean _processInput(String input) {
         if (input == null){
-            throw new InputException("Empty input");
+            return false;
         } else if (!input.matches("[a-zA-Z0-9]+")){
-            throw new InputException("Non alphanumeric characters in input");
+            return false;
         }
+
+        Log.d(TAG, "_processInput returning true");
+        return true;
     }
 
     private String _hashPassword(String password, byte[] salt){
@@ -308,6 +282,103 @@ public class LoginActivity extends AppCompatActivity{
         return hash.toString();
     }
 
+    protected Boolean sendServer(String username){
+        DatagramSocket socket = null;
 
+        // create JSON object containing username to send to the server
+        JSONObject usernameRequest = new JSONObject();
+        try {
+            usernameRequest.put("type", "get_user");
+        } catch (JSONException e){
+            Log.e(TAG, "JSON exception when adding type to usernameRequest!");
+            e.printStackTrace();
+        }
 
+        try {
+            usernameRequest.put("payload", username);
+        } catch (JSONException e){
+            Log.e(TAG, "JSON exception when adding payload to usernameRequest!");
+            e.printStackTrace();
+        }
+
+        try{
+            socket = new DatagramSocket() ;
+        } catch (SocketException e){
+            Log.e(TAG, "Socket exception when creating socket and receiveSoc!");
+            Log.e(TAG, "Socket Error:", e);
+            e.printStackTrace();
+            return false;
+        }
+
+        try{
+            socket.setSoTimeout(30000);
+        } catch (SocketException e){
+            Log.e(TAG, "Socket exception when setting timeout!");
+            e.printStackTrace();
+            return false;
+        }
+
+        byte[] sendJSON = usernameRequest.toString().getBytes(UTF8_CHARSET);
+
+        DatagramPacket packet = new DatagramPacket(sendJSON, sendJSON.length, ADDR, PORT);
+
+        try {
+            socket.send( packet );
+        } catch (Exception e){
+            Log.e(TAG, "Exception when sending packet!");
+            Log.e("Udp:", "Socket Exception:", e);
+            e.printStackTrace();
+            return false;
+        }
+
+        return true;
+    }
+
+    protected String receivePacket(){
+        DatagramSocket receiveSoc = null;
+
+        try{
+            receiveSoc = new DatagramSocket(PORT) ;
+        } catch (SocketException e){
+            Log.e(TAG, "Socket exception when creating socket and receiveSoc!");
+            Log.e(TAG, "Socket Error:", e);
+            e.printStackTrace();
+            return null;
+        }
+
+        try{
+            receiveSoc.setSoTimeout(30000);
+        } catch (SocketException e){
+            Log.e(TAG, "Socket exception when setting timeout!");
+            e.printStackTrace();
+            return null;
+        }
+
+        DatagramPacket receivePacket = new DatagramPacket(new byte[PACKETSIZE], PACKETSIZE) ;
+        try {
+            receiveSoc.receive(receivePacket);
+        } catch (Exception e){
+            Log.e(TAG, "Exception when receiving packet!");
+            Log.e(TAG, "Exception: ", e);
+            e.printStackTrace();
+            return null;
+        }
+
+        return receivePacket.getData().toString();
+    }
+
+    private class SleepTask extends AsyncTask<Integer, Void, Void>{
+        @Override
+        protected Void doInBackground(Integer ...args){
+            int sleepTime = args[0];
+            try {
+                TimeUnit.MINUTES.sleep(sleepTime);
+            } catch (InterruptedException e){
+                Log.e(TAG, "Interrupted Exception when sleeping for 5 minuets");
+            }
+
+            lockFlag = false;
+            return null;
+        }
+    }
 }
