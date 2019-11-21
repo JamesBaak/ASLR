@@ -12,8 +12,9 @@ import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import org.json.JSONException;
-import org.json.JSONObject;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
 
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -129,7 +130,7 @@ public class CreateNewUserActivity extends AppCompatActivity{
     }
 
     public void createNewUser(String username, String password, String confirmPassword, Boolean developer){
-        JSONObject receiveJSON;
+        JSONObject receiveJSON = null;
 
         if (!confirmPassword.equals(password)){
             mResultView.setText(R.string.non_match_passwords_error);
@@ -142,30 +143,23 @@ public class CreateNewUserActivity extends AppCompatActivity{
 
         String encryptedPassword = _hashPassword(password, salt);
 
-        Log.d(TAG, "Salt: " + salt.toString());
+        String saltStr = new String(salt);
+
+        Log.d(TAG, "Salt: " + saltStr);
         Log.d(TAG, "Encrypted password: " + encryptedPassword);
 
         //send user to database
         JSONObject usernameRequest = new JSONObject();
-        try {
-            usernameRequest.put("type", "create_user");
-        } catch (JSONException e){
-            Log.e(TAG, "JSON exception!");
-            e.printStackTrace();
-        }
+
+        usernameRequest.put("type", "create_user");
 
         Map m = new LinkedHashMap(4);
         m.put("username", username);
-        m.put("saltValue", salt.toString());
+        m.put("saltValue", saltStr);
         m.put("password", encryptedPassword);
         m.put("developer", developer ? 1 : 0);
 
-        try {
-            usernameRequest.put("payload", m);
-        } catch (JSONException e){
-            Log.e(TAG, "JSON exception!");
-            e.printStackTrace();
-        }
+        usernameRequest.put("payload", m);
 
         Boolean sendResult = sendServer(usernameRequest);
 
@@ -182,20 +176,12 @@ public class CreateNewUserActivity extends AppCompatActivity{
         }
 
         try {
-            receiveJSON = new JSONObject(receiveString);
-        } catch (JSONException e){
-            Log.e(TAG, "JSON exception!");
-            e.printStackTrace();
-            return;
+            receiveJSON = (JSONObject) new JSONParser().parse(receiveString);
+        } catch (ParseException e){
         }
 
         String ack = "";
-        try {
-            ack = receiveJSON.getString("type");
-        } catch (JSONException e){
-            Log.e(TAG, "JSON exception!");
-            e.printStackTrace();
-        }
+        ack = receiveJSON.get("type").toString();
 
         Boolean result;
 
@@ -239,9 +225,9 @@ public class CreateNewUserActivity extends AppCompatActivity{
 
         KeySpec spec = new PBEKeySpec(password.toCharArray(), salt, 65536, 128);
         try {
-            factory = SecretKeyFactory.getInstance("PBEwithHmacSHA1");
+            factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
         } catch (NoSuchAlgorithmException e){
-            Log.i(TAG, "No such algorithm: PBEwithHmacSHA1");
+            Log.i(TAG, "No such algorithm: PBKDF2WithHmacSHA1");
             e.printStackTrace();
             return null;
         }
@@ -253,7 +239,7 @@ public class CreateNewUserActivity extends AppCompatActivity{
             e.printStackTrace();
             return null;
         }
-        return hash.toString();
+        return new String(hash);
     }
 
     protected Boolean sendServer(JSONObject jsonPacket){
