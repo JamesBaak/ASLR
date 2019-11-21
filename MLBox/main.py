@@ -100,6 +100,8 @@ def handleLoad(socket, address, payload):
     
     if payload["remaining"] == 0:
         loaded = True
+    
+    train_model()
 
 
 

@@ -30,7 +30,7 @@ class MyUDPServer(socketserver.UDPServer):
 class MyUDPHandler(socketserver.BaseRequestHandler):
 
     def handle(self):
-        request = json.loads(self.request[0].strip())
+        request = json.loads(self.request[0].decode('utf-8'))
         socket = self.request[1]
         print("Request from {}:".format(self.client_address[0]))
         print(request)
@@ -83,7 +83,7 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
         response = self.__attemptSample__(payload)
         data = response["payload"]
 
-        if (response.type == "save"):
+        if (response['type'] == "save"):
             socket.sendto(
                 bytes(json.dumps(self.__constructJSON__(PRED, data["prediction"])), "utf-8"),
                 self.client_address
@@ -98,7 +98,7 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
         # event: (userId: int,data: json string, pred: int, class: int)
         self.server.database.insert_event((
             self.server.current_userId,
-            { "data": data["input"] },
+            json.dumps({ "data": data["input"] }),
             data["prediction"],
             data["class"] # class is a keyword in python
         ))
@@ -114,9 +114,9 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
         self.server.ml_sock.sendto(bytes(json.dumps(request), "utf-8"), self.server.ml_addr)
 
         # Wait for 'save' response from ML algorithm
-        reponse = json.loads(str(self.server.ml_sock.recv(2048), "utf-8"))
+        response = json.loads(str(self.server.ml_sock.recv(2048), "utf-8"))
 
-        return reponse
+        return response
 
     def __handleSave__(self, socket, payload):
         """
@@ -203,16 +203,22 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
         """
         print(payload)
         user_t = self.server.database.get_user(payload) # Tuple of the user
-        user_json = {
-            "username" : user_t[1],
-            "salt"     : user_t[2],
-            "password" : user_t[3],
-            "developer": user_t[4]
-        }
-        socket.sendto(
-            bytes(json.dumps(self.__constructJSON__(USER, user_json)), "utf-8"),
-            self.client_address
-        )
+        if user_t == None:
+            socket.sendto(
+                bytes(json.dumps(self.__constructJSON__(ERROR, "User does not exist...")), "utf-8"),
+                self.client_address
+            )
+        else:
+            user_json = {
+                "username" : user_t[1],
+                "salt"     : user_t[2],
+                "password" : user_t[3],
+                "developer": user_t[4]
+            }
+            socket.sendto(
+                bytes(json.dumps(self.__constructJSON__(USER, user_json)), "utf-8"),
+                self.client_address
+            )
 
     def __sendAck__(self, socket):
         socket.sendto(bytes(json.dumps(ACK), "utf-8"), self.client_address)
@@ -220,7 +226,7 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
 if __name__ == "__main__":
     HOST, PORT = "", 9999
     ML_HOST, ML_PORT = "localhost", 1024
-    DB_LOC = r".\Database\aslr_database.db" # For windows. The slashes may have to be changed for linux
+    DB_LOC = r"./Database/aslr_database.db" # For windows. The slashes may have to be changed for linux
                                             # We can also check OS and change DB_LOC var respectivly
     server = MyUDPServer((HOST, PORT), MyUDPHandler, True, DB_LOC, (ML_HOST, ML_PORT))
     server.serve_forever()
