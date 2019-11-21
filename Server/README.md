@@ -15,6 +15,6 @@ Table of supported types and their respective payloads:
 Type | Payload | Response |
 ---- | ------- | -------- |
 sample | empty string to get prediction from ML PI or an int representing one of the gestures | { "type": "prediction", "payload": int }
-load | The username of the user's data that the machine learning algorithm should train with  | { type: "ack", payload: "" }
+load | The username of the user's data that the machine learning algorithm should train with or empty string to load all records  | { type: "ack", payload: "" }
 create_user | [json: { username: string, saltValue: string, password: string, developer: int }] | { type: "ack", payload: "" }
 get_user | The username of the user's record to return | { type: "user", payload: { "username" : string, "salt"     : string, "password" : string, "developer": int }}
