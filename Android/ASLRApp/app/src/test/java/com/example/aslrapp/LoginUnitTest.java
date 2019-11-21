@@ -16,42 +16,14 @@ import org.mockito.runners.MockitoJUnitRunner;
 
 @RunWith(MockitoJUnitRunner.class)
 public class LoginUnitTest extends junit.framework.TestCase{
-    //private static final String USERJSON = "{username: userTest, saltValue: [B@26dfc36, password: [B@f67b9d1, developer: 0}";
-    //private static final String DEVJSON = "{ username: devTest, saltValue: [B@26dfc36, password: [B@f67b9d1, developer: 1 }";
-    private JSONObject USERJSON = null;
-    private JSONObject DEVJSON = null;
-
+    private static final String USERJSON = "{\"username\": \"userTest\", \"saltValue\": \"[B@6a2179d\", \"password\": \"[B@c8d1674\", \"developer\": \"0\"}";
+    private static final String DEVJSON = "{\"username\": \"devTest\", \"saltValue\": \"[B@6a2179d\", \"password\": \"[B@c8d1674\", \"developer\": \"1\" }";
 
     private static final LoginResult USERLOGIN = new LoginResult(true, false);
     private static final LoginResult DEVLOGIN = new LoginResult(true, true);
     private static final LoginResult INCORRECT = new LoginResult(false, false);
 
     LoginActivity login = new LoginActivity();
-
-    @Before
-    public void buildJSON(){
-        try {
-            USERJSON = new JSONObject();
-            USERJSON.put("username", "userTest");
-            USERJSON.put("password", "[B@f67b9d1");
-            USERJSON.put("saltValue", "[B@26dfc36");
-            USERJSON.put("developer", 0);
-
-        } catch (JSONException e){
-            System.out.println("Error creating USERJSON");
-        }
-
-        try {
-            DEVJSON = new JSONObject();
-            DEVJSON.put("username", "devTest");
-            DEVJSON.put("password", "[B@f67b9d1");
-            DEVJSON.put("saltValue", "[B@26dfc36");
-            DEVJSON.put("developer", 1);
-
-        } catch (JSONException e){
-            System.out.println("Error creating DEVJSON");
-        }
-    }
 
     // Test ID 1
     @Test
@@ -68,7 +40,8 @@ public class LoginUnitTest extends junit.framework.TestCase{
 
         resultLogin = login.login(USERJSON, passwordTyped);
 
-        assertEquals(USERLOGIN, resultLogin);
+        assertEquals(USERLOGIN.getDeveloper(), resultLogin.getDeveloper());
+        assertEquals(USERLOGIN.getResult(), resultLogin.getResult());
     }
 
     // Test ID 2
@@ -86,7 +59,8 @@ public class LoginUnitTest extends junit.framework.TestCase{
 
         resultLogin = login.login(DEVJSON, passwordTyped);
 
-        assertEquals(DEVLOGIN, resultLogin);
+        assertEquals(DEVLOGIN.getDeveloper(), resultLogin.getDeveloper());
+        assertEquals(DEVLOGIN.getResult(), resultLogin.getResult());
     }
 
     // Test ID 3
@@ -104,7 +78,8 @@ public class LoginUnitTest extends junit.framework.TestCase{
 
         resultLogin = login.login(USERJSON, passwordTyped);
 
-        assertEquals(INCORRECT, resultLogin);
+        assertEquals(INCORRECT.getResult(), resultLogin.getResult());
+        assertEquals(INCORRECT.getDeveloper(), resultLogin.getDeveloper());
     }
 
     // Test ID 4
@@ -123,7 +98,9 @@ public class LoginUnitTest extends junit.framework.TestCase{
 
             resultLogin = login.login(USERJSON, passwordTyped);
 
-            assertEquals(INCORRECT, resultLogin);
+            assertEquals(INCORRECT.getResult(), resultLogin.getResult());
+            assertEquals(INCORRECT.getDeveloper(), resultLogin.getDeveloper());
+
         }
 
         assertTrue(login.lockFlag);
@@ -158,7 +135,8 @@ public class LoginUnitTest extends junit.framework.TestCase{
 
             resultLogin = login.login(USERJSON, passwordTyped);
 
-            assertEquals(INCORRECT, resultLogin);
+            assertEquals(INCORRECT.getResult(), resultLogin.getResult());
+            assertEquals(INCORRECT.getDeveloper(), resultLogin.getDeveloper());
         }
 
         assertFalse(login.lockFlag);
