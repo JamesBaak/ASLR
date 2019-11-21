@@ -58,6 +58,7 @@ class TestServerCommunication(unittest.TestCase):
             (TestServerCommunication.ML_HOST, TestServerCommunication.ML_PORT)
         )
 
+        # Change the ML Pi socket to a mock one to run tests without it
         TestServerCommunication.server.ml_sock = mock.Mock()
         TestServerCommunication.server.ml_sock.sendto.return_value = True
         TestServerCommunication.server.ml_sock.recv.return_value = bytes(
@@ -143,6 +144,10 @@ class TestServerCommunication(unittest.TestCase):
         self.assertEqual(result["type"], "error", 'Should be of type error response')
         self.assertIn('type', result["payload"])
 
+    """
+    Ensure that a user can be retrieved by the requester from the database.
+    Should return the user as the test user exists in the mock database
+    """
     def test_get_user(self):
         result = self.sendValidRequest('get_user', TEST_USER)
         payload = result['payload']
@@ -152,22 +157,38 @@ class TestServerCommunication(unittest.TestCase):
         self.assertEqual(payload['password'], TEST_PASS)
         self.assertEqual(payload['developer'], TEST_DEV)
 
+    """
+    Test that retrieving a user that does not exist returns an error 
+    indicating that the user does not exist.
+    """
     def test_get_invalid_user(self):
         result = self.sendValidRequest('get_user', "nobody")
         self.assertEqual(result['type'], "error")
         self.assertIn('exist', result['payload'])
 
+        result = self.sendValidRequest('get_user', 1)
+        self.assertEqual(result['type'], "error")
+        self.assertIn('exist', result['payload'])
+
+    """
+    Test that the server can handle receiving a user with empty string.
+    """
     def test_get_no_user(self):
         result = self.sendValidRequest('get_user', "")
         self.assertEqual(result['type'], "error")
         self.assertIn('exist', result['payload'])
     
+    """
+    Test the bracelet sampling of the server with connection to the mock
+    machine learning Pi. The mock object should return the prediction for
+    a valid sample request.
+    """
     def test_send_sample(self):
         result = self.sendSampleRequest(2)
         self.assertEqual(result['type'], "ack")
-
         result = self.receiveResponse()
         self.assertEqual(result['type'], "prediction")
+        self.assertEqual(result['payload'], 2)
 
 if __name__ == '__main__':
     unittest.main()
