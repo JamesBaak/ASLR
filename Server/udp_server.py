@@ -1,5 +1,7 @@
 import socketserver
+import socket
 import json
+import copy
 from Database.sql_database import Database
 
 
@@ -7,10 +9,13 @@ from Database.sql_database import Database
 # https://docs.python.org/3/library/socketserver.html#socketserver-udpserver-example
 
 # JSON msg types for construction of responses
-ERROR = { "type": "error", "payload": "" }
-ACK   = { "type": "ack", "payload": "" }
-SIGN  = { "type": "sign", "payload": "" }
-USER  = { "type": "user", "payload": {} }
+ERROR   = { "type": "error", "payload": "" }
+ACK     = { "type": "ack", "payload": "" }
+USER    = { "type": "user", "payload": {} }
+SAMPLE  = { "type": "sample", "payload": 0 }
+PRED    = { "type": "prediction", "payload": 0 }
+RECORDS = { "type": "records", "payload": { "records": [], "remaining": 0 }}
+MAX_REC = 40
 
 class MyUDPServer(socketserver.UDPServer):
     
@@ -18,6 +23,9 @@ class MyUDPServer(socketserver.UDPServer):
         super().__init__(server_address, RequestHandlerClass, bind_and_activate)
         self.database = Database(db_file)
         self.ml_addr = ml_addr
+        self.ml_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.ml_sock.settimeout(15)
+        self.current_userId = 0
 
 class MyUDPHandler(socketserver.BaseRequestHandler):
 
@@ -71,9 +79,44 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
         Sample the bracelet and get ML prediction
         payload [string] - Empty string to get prediction, and int representing gesture
         """
-        # Can access the ML PI address through self.server.ml_addr
         self.__sendAck__(socket)
-        print(payload)
+        response = self.__attemptSample__(payload)
+        data = response["payload"]
+
+        if (response.type == "save"):
+            socket.sendto(
+                bytes(json.dumps(self.__constructJSON__(PRED, data["prediction"])), "utf-8"),
+                self.client_address
+            )
+        else:
+            socket.sendto(
+                bytes(json.dumps(self.__constructJSON__(ERROR, "ML PI Error...: {}".format(data))), "utf-8"),
+                self.client_address
+            )
+
+        # Save the event sample in the database
+        # event: (userId: int,data: json string, pred: int, class: int)
+        self.server.database.insert_event((
+            self.server.current_userId,
+            { "data": data["input"] },
+            data["prediction"],
+            data["class"] # class is a keyword in python
+        ))
+
+
+    def __attemptSample__(self, payload):
+        # Can access the ML PI address and socket through self.server.ml_addr
+        # Create request and forward payload
+        request = SAMPLE.copy()
+        request["payload"] = payload
+
+        # Forward sample request
+        self.server.ml_sock.sendto(bytes(json.dumps(request), "utf-8"), self.server.ml_addr)
+
+        # Wait for 'save' response from ML algorithm
+        reponse = json.loads(str(self.server.ml_sock.recv(2048), "utf-8"))
+
+        return reponse
 
     def __handleSave__(self, socket, payload):
         """
@@ -89,8 +132,54 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
         payload [string] - The username of the user to load the ML PI with. If blank string (""),
                         then load all data records.
         """
+        # Local function to transform records from MLResults to
+        # JSON object
+        def transform(record):
+            return {
+                "pred": record[2],
+                "class": record[3],
+                "input": record[1]
+            }
+
         self.__sendAck__(socket)
-        print(payload)
+
+        if (payload == ""):
+            results = self.server.database.get_all_events()
+        else:
+            results = self.server.database.get_user_events(payload)
+
+        # Transform records
+        records = map(transform, results)
+            
+
+        # Record size should be around 196 * (8 float size) = 1568 bytes + other details ~ 1600 bytes
+        # Max UDP packet can be 65535 - 20 = 65535 -> - 20 / 1600 ~ 40.9
+        # Can send about 40 records over in one UDP packet
+        rec_len = len(records)
+        div = rec_len // MAX_REC
+        remainder = rec_len % MAX_REC
+        request = copy.deepcopy(RECORDS) # Reuse one record packet
+
+        if (div == 0): # We can fit all records in one packet
+            request["payload"]["records"] = records
+            self.server.ml_sock.sendto(bytes(json.dumps(request), "utf-8"), self.server.ml_addr)
+        else:
+            rec_start = 0
+            rec_end   = rec_len
+            # Have to send remainder packet after div count
+            for i in range(div):
+                rec_start = i * 40
+                rec_end   = (i + 1) * 40
+                remaining = div - i
+                if (remainder == 0): remaining - 1
+                request["payload"]["remaining"] = div - i - 1
+                request["payload"]["records"] = records[rec_start:rec_end]
+                self.server.ml_sock.sendto(bytes(json.dumps(request), "utf-8"), self.server.ml_addr)
+            if (remainder > 0):
+                request["payload"]["remaining"] = 0
+                request["payload"]["records"] = records[rec_end + 1:rec_len]
+                self.server.ml_sock.sendto(bytes(json.dumps(request), "utf-8"), self.server.ml_addr)
+
 
     def __handleCreateUser__(self, socket, payload):
         """
@@ -133,5 +222,5 @@ if __name__ == "__main__":
     ML_HOST, ML_PORT = "localhost", 1024
     DB_LOC = r".\Database\aslr_database.db" # For windows. The slashes may have to be changed for linux
                                             # We can also check OS and change DB_LOC var respectivly
-    with MyUDPServer((HOST, PORT), MyUDPHandler, True, DB_LOC, (ML_HOST, ML_PORT)) as server:
-        server.serve_forever()
+    server = MyUDPServer((HOST, PORT), MyUDPHandler, True, DB_LOC, (ML_HOST, ML_PORT))
+    server.serve_forever()

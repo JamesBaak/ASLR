@@ -14,6 +14,7 @@ PORT = 9999
 HOST_ADDRESS = "localhost"
 ACK   = { "type": "ack", "payload": "" }
 ERROR = { "type": "error", "payload": "" }
+SAVE  = { "type": "save", "payload": {} }
 
 #Setup the ML model
 clf = OneVsRestClassifier(MLPClassifier(solver='lbfgs', alpha=0.05, hidden_layer_sizes=(24,), random_state=1))
@@ -21,6 +22,7 @@ scaler = StandardScaler()
 mlb = MultiLabelBinarizer()
 labels = []
 features = []
+loaded = False
 
 def __constructJSON__(self, msgType, msg):
         """
@@ -39,21 +41,39 @@ def handleSample(socket, address, payload, buffer):
     Finally, return the response back to server.
     socket - socket of request
     address - response address
-    payload [int] - 
+    payload [int] - A zero for no class and greater than 0 representing a gesture
     """
     print("Training model and prediction commencing...")
-    in_vector = scaler.transform(np.array(buffer))
 
-    if payload > 0:
-        print("No gesture selected, skipping training...")
+    # The buffer isn't ready
+    if (buffer[0]) == None:
+        socket.sendto(
+            bytes(json.dumps(__constructJSON__(ERROR, "Buffer not ready yet...")), "utf-8"),
+            address
+        )
     else:
-        labels.append(payload)
-        features.append(in_vector)
-        train_model()
-        
-    #Prediction
-    pred = clf.predict(in_vector)
-    result = (pred, payload, in_vector)
+        in_vector = np.array(buffer)
+
+        if payload == 0:
+            print("No gesture selected, skipping training...")
+        else:
+            labels.append(payload)
+            features.append(in_vector)
+            train_model()
+            
+        #Prediction
+        # Get last prediction. Sadly no prediction of single input
+        pred = clf.predict(features)[-1]
+        result = {
+            "prediction": pred,
+            "class": payload,
+            "input": in_vector
+        }
+
+        socket.sendto(
+            bytes(json.dumps(__constructJSON__(SAVE, result)), "utf-8"),
+            address
+        )
 
 def train_model():
     # Do this so we can avoid overfitting due to our small data set
@@ -62,6 +82,25 @@ def train_model():
     acccuracy = clf.score(X_test, y_test)
     print("Model Trained...")
     print("Accuracy: {}".format(acccuracy))
+
+def handleLoad(socket, address, payload):
+    global loaded
+    global labels
+    global features
+    
+    if loaded:
+        features = []
+        labels = []
+        loaded = False
+
+    for rec in payload["records"]:
+        if (rec["class"] and rec["input"]):
+            labels.append(rec["class"])
+            features.append(rec["input"])
+    
+    if payload["remaining"] == 0:
+        loaded = True
+
 
 
 def main():
@@ -100,6 +139,8 @@ def main():
              # Process request
             if request["type"] == "sample": # Send request to ML PI to sample and return response
                 handleSample(socket, address, request["payload"], sb.readBuffer())
+            elif request["type"] == "load":
+                handleLoad(socket, address, request["payload"])
             else: # Request type not specified
                 socket.sendto(
                     bytes(json.dumps(__constructJSON__(ERROR, "Unknown type field...")), "utf-8"),
