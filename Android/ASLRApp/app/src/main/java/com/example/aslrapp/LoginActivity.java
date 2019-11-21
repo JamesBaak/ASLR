@@ -107,23 +107,23 @@ public class LoginActivity extends AppCompatActivity {
                 if (!lockFlag) {
                     mResultView.setVisibility(View.INVISIBLE);
 
-                    //Boolean sendResult = sendServer(username);
+                    Boolean sendResult = sendServer(username);
 
                     // Login failed for some reason
-                    //if(!sendResult){
-                     //   return;
-                    //}
+                    if(!sendResult){
+                       return;
+                    }
 
-                    //String receiveString = receivePacket();
+                    JSONObject receiveJSON = receivePacket();
 
                     // Login failed for some reason
-                    //if (receiveString == null){
-                     //   return;
-                    //}
+                    if (receiveJSON == null){
+                       return;
+                    }
 
-                    String receiveString = "{username: userTest, saltValue: [B@26dfc36, password: [B@f67b9d1, developer: 0}";
+                    //JSONObject receiveJSON = "{username: userTest, saltValue: [B@26dfc36, password: [B@f67b9d1, developer: 0}";
 
-                    LoginResult result = login(receiveString, password);
+                    LoginResult result = login(receiveJSON, password);
                     Log.i(TAG, "Completed Login Function");
 
                     if (result.getResult() && result.getDeveloper()) {
@@ -170,35 +170,14 @@ public class LoginActivity extends AppCompatActivity {
         return true;
     }
 
-    public LoginResult login (String receiveString, String password){
-        JSONObject receiveJSON;
-
+    public LoginResult login (JSONObject receiveJSON, String password){
         String databasePassword = "";
         byte[] salt = "".getBytes();
         int developerInt = 0;
         Boolean developer = false;
 
-        try {
-            receiveJSON = new JSONObject(receiveString);
-        } catch (JSONException e){
-            Log.e(TAG, "JSON exception when creating receiveJSON!");
-            e.printStackTrace();
-            return new LoginResult(false, false);
-        }
-
-        Log.d(TAG, "receiveJSON: " + receiveJSON.toString());
-
-        JSONObject payload = new JSONObject();
-
-        /*try {
-            payload = receiveJSON.getJSONObject("payload");
-        } catch (JSONException e){
-            Log.e(TAG, "JSON exception when getting payload from receiveJSON!");
-            e.printStackTrace();
-        }*/
 
         try {
-            //databasePassword = payload.get("password").toString();
             databasePassword = receiveJSON.get("password").toString();
         } catch (JSONException e){
             Log.e(TAG, "JSON exception when getting databasePassword!");
@@ -206,14 +185,14 @@ public class LoginActivity extends AppCompatActivity {
         }
 
         try {
-            salt = payload.get("salt").toString().getBytes();
+            salt = receiveJSON.get("saltValue").toString().getBytes();
         } catch (JSONException e){
             Log.e(TAG, "JSON exception when getting salt value!");
             e.printStackTrace();
         }
 
         try {
-            developerInt = payload.getInt("developer");
+            developerInt = receiveJSON.getInt("developer");
         } catch (JSONException e){
             Log.e(TAG, "JSON exception when getting developer status!");
             e.printStackTrace();
@@ -334,8 +313,9 @@ public class LoginActivity extends AppCompatActivity {
         return true;
     }
 
-    protected String receivePacket(){
+    protected JSONObject receivePacket(){
         DatagramSocket receiveSoc = null;
+        JSONObject receiveJSON = null;
 
         try{
             receiveSoc = new DatagramSocket(PORT) ;
@@ -364,7 +344,28 @@ public class LoginActivity extends AppCompatActivity {
             return null;
         }
 
-        return receivePacket.getData().toString();
+        String receiveString = receivePacket.getData().toString();
+
+        try {
+            receiveJSON = new JSONObject(receiveString);
+        } catch (JSONException e){
+            Log.e(TAG, "JSON exception when creating receiveJSON!");
+            e.printStackTrace();
+            return null;
+        }
+
+        Log.d(TAG, "receiveJSON: " + receiveJSON.toString());
+
+        JSONObject payload = new JSONObject();
+
+        /*try {
+            payload = receiveJSON.getJSONObject("payload");
+        } catch (JSONException e){
+            Log.e(TAG, "JSON exception when getting payload from receiveJSON!");
+            e.printStackTrace();
+        }*/
+
+        return receiveJSON;
     }
 
     private class SleepTask extends AsyncTask<Integer, Void, Void>{
