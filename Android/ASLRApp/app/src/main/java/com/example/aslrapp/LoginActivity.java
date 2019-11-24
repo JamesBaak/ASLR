@@ -100,7 +100,7 @@ public class LoginActivity extends AppCompatActivity {
                 Boolean validate = validate(username, password);
 
                 if (!validate){
-                    mResultView.setText("Invalid Input. \nPlease ensure the username only contains alphanumeric characters");
+                    mResultView.setText("Invalid Input. \nPlease ensure the username and password\n only contains alphanumeric characters");
                     mResultView.setVisibility(View.VISIBLE);
                     return;
                 }

@@ -36,7 +36,7 @@ import javax.crypto.spec.PBEKeySpec;
 
 public class CreateNewUserActivity extends AppCompatActivity{
 
-    private  final String TAG = "CreateNewUserActivity";
+    private final String TAG = "CreateNewUserActivity";
     private final Charset UTF8_CHARSET = Charset.forName("UTF-8");
 
     private static final Random RANDOM = new SecureRandom();
@@ -94,39 +94,49 @@ public class CreateNewUserActivity extends AppCompatActivity{
                 String confirmPassword = mConfirmPassword.getText().toString().trim();
                 Boolean dev = mDevBox.isChecked();
 
-                Boolean result;
+                Boolean validate = validate(username, password, confirmPassword);
 
-
-                result = _processInput(username);
-                if (!result){
-                    mResultView.setText("Invalid Username\n. Please ensure the username only contains alphanumeric characters");
+                if (!validate){
+                    mResultView.setText("Invalid Input. \nPlease ensure the username and password\n only contains alphanumeric characters");
                     mResultView.setVisibility(View.VISIBLE);
                     return;
                 }
-
-                Log.d(TAG, "Username: " + username);
-
-                result = _processInput(password);
-                if(!result){
-                    mResultView.setText("Invalid Password\n. Please ensure the password only contains alphanumeric characters");
-                    mResultView.setVisibility(View.VISIBLE);
-                    return;
-                }
-
-                Log.d(TAG, "Password: " + password);
-
-                result = _processInput(confirmPassword);
-                if (!result){
-                    mResultView.setText("Invalid Confirmation Password\n. Please ensure the password only contains alphanumeric characters");
-                    mResultView.setVisibility(View.VISIBLE);
-                    return;
-                }
-
-                Log.d(TAG, "Confirmation password: " + confirmPassword);
 
                 createNewUser(username, password, confirmPassword, dev);
             }
         });
+    }
+
+    public Boolean validate(String username, String password, String confirmPassword){
+        Boolean result;
+
+        result = _processInput(username);
+
+        if (!result){
+            Log.w(TAG, "Invalid username");
+            return false;
+        }
+
+        Log.d(TAG, "Username: " + username);
+
+        result = _processInput(password);
+        if (!result){
+            Log.w(TAG, "Invalid password");
+            return false;
+        }
+
+        Log.d(TAG, "Password: " + password);
+
+        result = _processInput(confirmPassword);
+        if (!result){
+            Log.w(TAG, "Invalid confirmation password");
+            return false;
+        }
+
+        Log.d(TAG, "Confirmation password: " + confirmPassword);
+
+        Log.d(TAG, "validate returning true");
+        return true;
     }
 
     public void createNewUser(String username, String password, String confirmPassword, Boolean developer){
