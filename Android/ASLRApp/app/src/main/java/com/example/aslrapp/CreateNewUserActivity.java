@@ -3,12 +3,15 @@ package com.example.aslrapp;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.StrictMode;
+import android.util.Base64;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.TextView;
+
+import android.util.Base64;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -153,7 +156,11 @@ public class CreateNewUserActivity extends AppCompatActivity{
 
         String encryptedPassword = _hashPassword(password, salt);
 
-        String saltStr = new String(salt);
+        for (int i = 0; i < salt.length; i++){
+            Log.d(TAG, "salt:" + salt[i]);
+        }
+
+        String saltStr = new String(Base64.encode(salt, Base64.DEFAULT));
 
         Log.d(TAG, "Salt: " + saltStr);
         Log.d(TAG, "Encrypted password: " + encryptedPassword);
@@ -249,7 +256,7 @@ public class CreateNewUserActivity extends AppCompatActivity{
             e.printStackTrace();
             return null;
         }
-        return new String(hash);
+        return new String(Base64.encode(hash, Base64.DEFAULT));
     }
 
     protected Boolean sendServer(JSONObject jsonPacket){
