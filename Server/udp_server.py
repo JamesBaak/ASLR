@@ -2,6 +2,7 @@ import socketserver
 import socket
 import json
 import copy
+import platform
 from Database.sql_database import Database
 
 
@@ -226,7 +227,11 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
 if __name__ == "__main__":
     HOST, PORT = "", 9999
     ML_HOST, ML_PORT = "localhost", 1024
-    DB_LOC = r"./Database/aslr_database.db" # For windows. The slashes may have to be changed for linux
-                                            # We can also check OS and change DB_LOC var respectivly
+    DB_LOC = None
+    os_name = platform.system()
+    if os_name == "Windows":
+        DB_LOC = r".\Database\aslr_database.db"
+    else:
+        DB_LOC = r"./Database/aslr_database.db"
     server = MyUDPServer((HOST, PORT), MyUDPHandler, True, DB_LOC, (ML_HOST, ML_PORT))
     server.serve_forever()
