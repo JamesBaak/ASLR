@@ -190,5 +190,14 @@ class TestServerCommunication(unittest.TestCase):
         self.assertEqual(result['type'], "prediction")
         self.assertEqual(result['payload'], 2)
 
+    def test_load_records(self):
+        # Load all records test
+        result = self.sendValidRequest("load", "")
+        self.assertEqual(result['type'], "ack")
+
+        # Load user's records test
+        result = self.sendValidRequest("load", TEST_USER)
+        self.assertEqual(result['type'], "ack")
+
 if __name__ == '__main__':
     unittest.main()
