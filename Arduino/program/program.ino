@@ -3,36 +3,53 @@
 // pins 2-13 are digitial i/o pins
 // External Interrupt Pins: pins 2 and 3
 
-int emitPin = 4; // pin for sending out a "turn on" signal to an IR Emitter
-
-int emitSelect1 = 5; // mux select 0
-int emitSelect2 = 6; // mux select 1
-int emitSelect3 = 7; // mux select 2
-int emitSelect4 = 8; // mux select 3
-
-int recvSelect1 = 9; // demux select 0
-int recvSelect2 = 10; // demux select 1
-int recvSelect3 = 11; // demux select 2
-int recvSelect4 = 12; // demux select 3
+int emitSig = 2; // pin for sending out a "turn on" signal to an IR Emitter
+int emitMuxEn = 7; // enable pin for emitter mux
+int emitMux[4] = {3, 4, 5, 6}; //mux selector pins for IR emitters
+int recvMuxEn = 8; // enable pin for receiver mux
+int recvMux[4] = {9, 10, 11, 12}; // mux selector pins for IR receivers
 
 bool startUp = true; // indicates if we are just turning on the ardunio or not
-bool test = false; // for running hardware tests
+bool test = true; // for running hardware tests
+
+const int muxTable[16][4] = {
+  // s0, s1, s2, s3     channel
+    {0,  0,  0,  0}, // 0
+    {1,  0,  0,  0}, // 1
+    {0,  1,  0,  0}, // 2
+    {1,  1,  0,  0}, // 3
+    {0,  0,  1,  0}, // 4
+    {1,  0,  1,  0}, // 5
+    {0,  1,  1,  0}, // 6
+    {1,  1,  1,  0}, // 7
+    {0,  0,  0,  1}, // 8
+    {1,  0,  0,  1}, // 9
+    {0,  1,  0,  1}, // 10
+    {1,  1,  0,  1}, // 11
+    {0,  0,  1,  1}, // 12
+    {1,  0,  1,  1}, // 13
+    {0,  1,  1,  1}, // 14
+    {1,  1,  1,  1}  // 15
+};
+
 
 void setup() {
-  pinMode(emitPin, OUTPUT);
+  pinMode(emitSig, OUTPUT);
+  pinMode(emitMuxEn, OUTPUT);
+  pinMode(recvMuxEn, OUTPUT);
   
-  // IR Emitter selector pins
-  pinMode(emitSelect1, OUTPUT);
-  pinMode(emitSelect2, OUTPUT);
-  pinMode(emitSelect3, OUTPUT);
-  pinMode(emitSelect4, OUTPUT);
+  for(int i=0; i<4; i++)
+  {
+    pinMode(emitMux[i], OUTPUT);// set mux pins as outputs
+    digitalWrite(emitMux[i], LOW); // set initial state as LOW     
 
-  // IR Receiver selector pins
-  pinMode(recvSelect1, OUTPUT);
-  pinMode(recvSelect2, OUTPUT);
-  pinMode(recvSelect3, OUTPUT);
-  pinMode(recvSelect4, OUTPUT);
+    pinMode(recvMux[i], OUTPUT);// set mux pins as outputs
+    digitalWrite(recvMux[i], LOW); // set initial state as LOW 
+  }
 
+  digitalWrite(emitMuxEn, LOW);
+  digitalWrite(recvMuxEn, LOW);
+  
   //Initialize serial and wait for port to open:
   Serial.begin(9600);
   while (!Serial) {
@@ -41,14 +58,6 @@ void setup() {
 }
 
 void loop() {
-  if (startUp)
-  {
-    // wait a couple seconds for the emitters/receivers to warm up
-    // all receivers should be waiting to receive and no emitter should be selected
-    delay(2000);
-    startUp = false;
-  }
-
   if (test) testLoop();
   else regularLoop();  
 }
@@ -57,7 +66,7 @@ void regularLoop() {
   float voltage = 0;
   for (byte emitter = 0; emitter < 14; emitter++) {
     muxSelect('e', emitter); // select emitter
-    digitalWrite(emitPin, HIGH); // turn emitter on
+    digitalWrite(emitSig, HIGH); // turn emitter on
 
     for (byte receiver = 0; receiver < 14; receiver++) {
       muxSelect('r', receiver); // select receiver
@@ -65,16 +74,16 @@ void regularLoop() {
       sendVoltage(voltage, false);
     }
 
-    digitalWrite(emitPin, LOW); // turn emitter off
+    digitalWrite(emitSig, LOW); // turn emitter off
   }
   sendVoltage(voltage, true);
 }
 
 void testLoop() {
   testEmitters(); // test IR emitters
-  for (byte i = 0; i < 14; i++) {
-    testRecv(i); // test IR receivers one at a time
-  }
+//  for (byte i = 0; i < 4; i++) {
+//    testRecv(i); // test IR receivers one at a time
+//  }
 }
 
 /* Turn on pins by looking at a received integer, reading its bits as a binary value, and associating one of the binary bits to a selector pin
@@ -82,30 +91,24 @@ void testLoop() {
  *    char selectPins -> indicates if we are choosing the ir receiver pins ('r') or the ir emitter pins ('e')
  *    byte selectNum -> the place where we want to send or receive data. selecting 0 will select the emitter or receiver at 0000. selecting 13 will select the emitter or receiver at 1101
  *    1110 (14) and 1111 (15) are empty spaces in our hardware where nothing happens. */
-void muxSelect(char selectPins, byte selectNum){
+void muxSelect(char selectPins, int selectNum){
   if (selectNum >= 14) return; //ERROR. we only want a value between 0 and 13 for our 14 emitters/receivers
 
-  byte sel_1 = bitRead(selectNum, 0); //1's place
-  byte sel_2 = bitRead(selectNum, 1); //2's place
-  byte sel_3 = bitRead(selectNum, 2); //4's place
-  byte sel_4 = bitRead(selectNum, 3); //8's place
+  // select mux pins (receiver or emitter)
+  int* pins;
+  pins = selectPins == 'r' ? recvMux : emitMux;
 
-  byte pin1 = selectPins == 'r' ? recvSelect1 : emitSelect1;
-  byte pin2 = selectPins == 'r' ? recvSelect2 : emitSelect2;
-  byte pin3 = selectPins == 'r' ? recvSelect3 : emitSelect3;
-  byte pin4 = selectPins == 'r' ? recvSelect4 : emitSelect4;
-  
-  if (sel_1 == 1) digitalWrite(pin1, HIGH);
-  else digitalWrite(pin1, LOW);
-
-  if (sel_2 == 1) digitalWrite(pin2, HIGH);
-  else digitalWrite(pin2, LOW);
-
-  if (sel_3 == 1) digitalWrite(pin3, HIGH);
-  else digitalWrite(pin3, LOW);
-
-  if (sel_4 == 1) digitalWrite(pin4, HIGH);
-  else digitalWrite(pin4, LOW);
+  digitalWrite(pins[0], muxTable[selectNum][0]);
+  digitalWrite(pins[1], muxTable[selectNum][1]);
+  digitalWrite(pins[2], muxTable[selectNum][2]);
+  digitalWrite(pins[3], muxTable[selectNum][3]);
+//  Serial.print(selectNum);
+// Serial.print (": ");
+// Serial.print(muxTable[selectNum][3]);
+// Serial.print(muxTable[selectNum][2]);
+// Serial.print(muxTable[selectNum][1]);
+// Serial.println(muxTable[selectNum][0]); 
+//
 }
 
 /* Read an IR Receiver voltage from our analog out pin
@@ -120,18 +123,18 @@ float readVoltage() {
 }
 
 void testRecv(byte receiver) {
-  digitalWrite(emitPin, LOW); // make sure no emitters are on
+  digitalWrite(emitSig, LOW); // make sure no emitters are on
   muxSelect('r', receiver); // select receiver we want to test
 
   float voltage = 0;
   float voltages[14];
-  for (byte emitter = 0; emitter < 14; emitter++) {
+  for (int emitter = 0; emitter < 14; emitter++) {
     muxSelect('e', emitter);
-    digitalWrite(emitPin, HIGH);
+    digitalWrite(emitSig, HIGH);
     voltage = readVoltage();
     voltages[emitter] = voltage;
     //sendVoltage
-    digitalWrite(emitPin, LOW);
+    digitalWrite(emitSig, LOW);
   }
 }
 
@@ -144,7 +147,7 @@ bool testClosest(byte recvnum, float voltages[]) {
   if (recvnum >= 14) return false;
   
   float maxValue = voltages[recvnum]; //highest voltage should be the emitter right above the tested receiver
-  for(byte i = 0; i < 14; i++)
+  for(int i = 0; i < 14; i++)
   {
       if(voltages[i] >= maxValue) {
           // we'll loop through the voltage @ recvnum so we need to make sure we ignore it. else, we fail the test
@@ -163,7 +166,7 @@ bool testFarthest(byte recvnum, float voltages[]) {
   if (recvnum >= 14) return false;
   
   float minValue = recvnum < 7 ? voltages[recvnum + 7] : voltages[recvnum - 7]; //highest voltage should be the emitter across from the tested receiver.
-  for(byte i = 0; i < 14; i++)
+  for(int i = 0; i < 14; i++)
   {
       if(voltages[i] <= minValue) {
           // we'll loop through the voltage @ recvnum so we need to make sure we ignore it. else, we fail the test
@@ -177,12 +180,11 @@ bool testFarthest(byte recvnum, float voltages[]) {
  * Not visible to the naked human eye, but IR light can be viewed through phone cameras
  */
 void testEmitters() {
-  digitalWrite(emitPin, LOW); // make sure no emitters are on
-  for (byte emitter = 0; emitter < 14; emitter++) {
+  digitalWrite(emitSig, LOW); // make sure no emitters are on
+  delay(1000);
+  digitalWrite(emitSig, HIGH);
+  for (int emitter = 0; emitter < 4; emitter++) {
     muxSelect('e', emitter);
-    digitalWrite(emitPin, HIGH);
-    delay(1000);
-    digitalWrite(emitPin, LOW);
     delay(1000);
   }
 }
