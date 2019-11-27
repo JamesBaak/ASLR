@@ -1,6 +1,7 @@
 package com.example.aslrapp;
 
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.os.Bundle;
 import android.os.StrictMode;
 import android.util.Base64;
@@ -59,6 +60,7 @@ public class CreateNewUserActivity extends AppCompatActivity{
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_create_new_user);
+        this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
 
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
         StrictMode.setThreadPolicy(policy);
@@ -155,10 +157,6 @@ public class CreateNewUserActivity extends AppCompatActivity{
         RANDOM.nextBytes(salt);
 
         String encryptedPassword = _hashPassword(password, salt);
-
-        for (int i = 0; i < salt.length; i++){
-            Log.d(TAG, "salt:" + salt[i]);
-        }
 
         String saltStr = new String(Base64.encode(salt, Base64.DEFAULT));
 

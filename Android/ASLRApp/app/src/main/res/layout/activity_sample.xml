@@ -13,11 +13,12 @@
             android:id="@+id/aslLetter"
             android:layout_width="321dp"
             android:layout_height="193dp"
-            android:layout_marginTop="68dp"
             android:contentDescription="@string/asl_letter"
+            app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintVertical_bias="0.065"
             app:srcCompat="@drawable/clock"
             tools:visibility="visible" />
 
@@ -25,12 +26,13 @@
             android:id="@+id/sample_button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="136dp"
             android:text="@string/sample_ai"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintHorizontal_bias="0.498"
-            app:layout_constraintStart_toStartOf="parent" />
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintVertical_bias="0.856" />
 
         <RadioGroup
             android:id="@+id/button_group"
