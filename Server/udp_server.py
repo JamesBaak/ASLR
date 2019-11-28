@@ -9,6 +9,10 @@ from Database.sql_database import Database
 # https://docs.python.org/3/library/socketserver.html
 # https://docs.python.org/3/library/socketserver.html#socketserver-udpserver-example
 
+# Configurable parameters of the server
+HOST, PORT = "", 9999
+ML_HOST, ML_PORT = "localhost", 1024 # The location of the ML Pi
+
 # JSON msg types for construction of responses
 ERROR   = { "type": "error", "payload": "" }
 ACK     = { "type": "ack", "payload": "" }
@@ -228,8 +232,6 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
         socket.sendto(bytes(json.dumps(ACK), "utf-8"), self.client_address)
 
 if __name__ == "__main__":
-    HOST, PORT = "", 9999
-    ML_HOST, ML_PORT = "localhost", 1024
     DB_LOC = None
     os_name = platform.system()
     if os_name == "Windows":
