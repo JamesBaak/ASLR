@@ -61,7 +61,9 @@ public class SampleActivity extends AppCompatActivity{
 
     private int PORT = 9999;
     private InetAddress ADDR;
-    private final static int PACKETSIZE = 1000;
+    private final static int PACKETSIZE = 1024;
+
+    DatagramSocket socket = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -84,6 +86,12 @@ public class SampleActivity extends AppCompatActivity{
         } catch (UnknownHostException e){
             Log.e(TAG, "Unknown host exception when creating address!");
             e.printStackTrace();
+        }
+
+        Boolean createResult = createSocket();
+
+        if (!createResult){
+            Log.e(TAG, "Failed to create socket");
         }
 
         mGroup.setVisibility(View.INVISIBLE);
@@ -141,6 +149,8 @@ public class SampleActivity extends AppCompatActivity{
 
                 String receiveString = receivePacket();
 
+                Log.d(TAG, "receive string: " + receiveString);
+
                 try {
                     receiveJSON = (JSONObject) new JSONParser().parse(receiveString);
                 } catch (ParseException e){
@@ -150,8 +160,33 @@ public class SampleActivity extends AppCompatActivity{
 
                 String type = receiveJSON.get("type").toString();
 
-                if(!type.equalsIgnoreCase("prediction")){
+                if(!type.equalsIgnoreCase("ack")){
+                    Log.e(TAG, "Didn't receive acknowledge of sample request");
+                    mSampleButton.setEnabled(true);
+                    return;
+                }
+
+                receiveString = receivePacket();
+
+                Log.d(TAG, "receive string: " + receiveString);
+
+                try {
+                    receiveJSON = (JSONObject) new JSONParser().parse(receiveString);
+                } catch (ParseException e){
+                    Log.e(TAG, "Failed to parse return string");
+                    return;
+                }
+
+                type = receiveJSON.get("type").toString();
+
+                if(type.equalsIgnoreCase("error")){
+                    String errorStr = receiveJSON.get("payload").toString();
+                    Log.e(TAG, "Error: " + errorStr);
+                    mSampleButton.setEnabled(true);
+                    return;
+                } else if(!type.equalsIgnoreCase("prediction")){
                     Log.e(TAG, "Did not receive a reply with a prediction type");
+                    mSampleButton.setEnabled(true);
                     return;
                 }
 
@@ -188,19 +223,7 @@ public class SampleActivity extends AppCompatActivity{
         });
     }
 
-    protected Boolean sendServer(){
-        DatagramSocket socket = null;
-
-        JSONObject sampleRequest = new JSONObject();
-
-        sampleRequest.put("type", "sample");
-
-        if (letter == Letter.NONE){
-            sampleRequest.put("payload", "");
-        } else {
-            sampleRequest.put("payload", letter.getValue());
-        }
-
+    protected Boolean createSocket(){
         try{
             socket = new DatagramSocket() ;
         } catch (SocketException e){
@@ -216,6 +239,19 @@ public class SampleActivity extends AppCompatActivity{
             Log.e(TAG, "Socket exception when setting timeout!");
             e.printStackTrace();
             return false;
+        }
+        return true;
+    }
+
+    protected Boolean sendServer(){
+        JSONObject sampleRequest = new JSONObject();
+
+        sampleRequest.put("type", "sample");
+
+        if (letter == Letter.NONE){
+            sampleRequest.put("payload", "");
+        } else {
+            sampleRequest.put("payload", letter.getValue());
         }
 
         byte[] sendJSON = sampleRequest.toString().getBytes(UTF8_CHARSET);
@@ -235,28 +271,9 @@ public class SampleActivity extends AppCompatActivity{
     }
 
     protected String receivePacket(){
-        DatagramSocket receiveSoc = null;
-
-        try{
-            receiveSoc = new DatagramSocket(PORT) ;
-        } catch (SocketException e){
-            Log.e(TAG, "Socket exception when creating socket and receiveSoc!");
-            Log.e(TAG, "Socket Error:", e);
-            e.printStackTrace();
-            return null;
-        }
-
-        try{
-            receiveSoc.setSoTimeout(30000);
-        } catch (SocketException e){
-            Log.e(TAG, "Socket exception when setting timeout!");
-            e.printStackTrace();
-            return null;
-        }
-
         DatagramPacket receivePacket = new DatagramPacket(new byte[PACKETSIZE], PACKETSIZE) ;
         try {
-            receiveSoc.receive(receivePacket);
+            socket.receive(receivePacket);
         } catch (Exception e){
             Log.e(TAG, "Exception when receiving packet!");
             Log.e(TAG, "Exception: ", e);
@@ -264,7 +281,7 @@ public class SampleActivity extends AppCompatActivity{
             return null;
         }
 
-        return receivePacket.getData().toString();
+        return new String(receivePacket.getData()).trim();
     }
 
     private static Letter fromInteger(int x) {

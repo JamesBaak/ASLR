@@ -52,9 +52,11 @@ public class CreateNewUserActivity extends AppCompatActivity{
     private Boolean developer = false;
     private CheckBox mDevBox;
 
-    private int PORT = 9999;
+    private int SENDPORT = 9999;
     private InetAddress ADDR;
-    private final static int PACKETSIZE = 10000;
+    private final static int PACKETSIZE = 1024;
+
+    DatagramSocket socket = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -78,6 +80,12 @@ public class CreateNewUserActivity extends AppCompatActivity{
         } catch (UnknownHostException e){
             Log.e(TAG, "Unknown host exception when creating address!");
             e.printStackTrace();
+        }
+
+        Boolean createResult = createSocket();
+
+        if (!createResult){
+            Log.e(TAG, "Failed to create socket");
         }
 
         mResultView.setVisibility(View.INVISIBLE);
@@ -108,6 +116,7 @@ public class CreateNewUserActivity extends AppCompatActivity{
                 }
 
                 createNewUser(username, password, confirmPassword, dev);
+
             }
         });
     }
@@ -180,6 +189,7 @@ public class CreateNewUserActivity extends AppCompatActivity{
 
         // Create new user request failed for some reason
         if(!sendResult){
+            Log.e(TAG, "Failed to send create new user requesst!");
             return;
         }
 
@@ -187,12 +197,16 @@ public class CreateNewUserActivity extends AppCompatActivity{
 
         // Create new user request failed for some reason
         if (receiveString == null){
+            Log.e(TAG, "Failed to get a response from server!");
             return;
         }
 
         try {
             receiveJSON = (JSONObject) new JSONParser().parse(receiveString);
         } catch (ParseException e){
+            Log.e(TAG, "Parse exception when parsing receiveString!");
+            Log.e(TAG, "Exception: " + e);
+            return;
         }
 
         String ack = "";
@@ -215,6 +229,8 @@ public class CreateNewUserActivity extends AppCompatActivity{
             } catch (InterruptedException e){
                 Log.e(TAG, "Sleep Interrupted");
             }
+
+            socket.close();
 
             Intent MainIntent = new Intent(CreateNewUserActivity.this, MainActivity.class);
             CreateNewUserActivity.this.startActivity(MainIntent);
@@ -257,9 +273,7 @@ public class CreateNewUserActivity extends AppCompatActivity{
         return new String(Base64.encode(hash, Base64.DEFAULT));
     }
 
-    protected Boolean sendServer(JSONObject jsonPacket){
-        DatagramSocket socket = null;
-
+    protected Boolean createSocket(){
         try{
             socket = new DatagramSocket() ;
         } catch (SocketException e){
@@ -276,16 +290,19 @@ public class CreateNewUserActivity extends AppCompatActivity{
             e.printStackTrace();
             return false;
         }
+        return true;
+    }
 
+    protected Boolean sendServer(JSONObject jsonPacket){
         byte[] sendJSON = jsonPacket.toString().getBytes(UTF8_CHARSET);
 
-        DatagramPacket packet = new DatagramPacket(sendJSON, sendJSON.length, ADDR, PORT);
+        DatagramPacket packet = new DatagramPacket(sendJSON, sendJSON.length, ADDR, SENDPORT);
 
         try {
             socket.send( packet );
         } catch (Exception e){
             Log.e(TAG, "Exception when sending packet!");
-            Log.e("Udp:", "Socket Exception:", e);
+            Log.e(TAG, "Socket Exception:", e);
             e.printStackTrace();
             return false;
         }
@@ -294,28 +311,9 @@ public class CreateNewUserActivity extends AppCompatActivity{
     }
 
     protected String receivePacket(){
-        DatagramSocket receiveSoc = null;
-
-        try{
-            receiveSoc = new DatagramSocket(PORT) ;
-        } catch (SocketException e){
-            Log.e(TAG, "Socket exception when creating socket and receiveSoc!");
-            Log.e(TAG, "Socket Error:", e);
-            e.printStackTrace();
-            return null;
-        }
-
-        try{
-            receiveSoc.setSoTimeout(30000);
-        } catch (SocketException e){
-            Log.e(TAG, "Socket exception when setting timeout!");
-            e.printStackTrace();
-            return null;
-        }
-
         DatagramPacket receivePacket = new DatagramPacket(new byte[PACKETSIZE], PACKETSIZE) ;
         try {
-            receiveSoc.receive(receivePacket);
+            socket.receive(receivePacket);
         } catch (Exception e){
             Log.e(TAG, "Exception when receiving packet!");
             Log.e(TAG, "Exception: ", e);
@@ -323,7 +321,7 @@ public class CreateNewUserActivity extends AppCompatActivity{
             return null;
         }
 
-        return receivePacket.getData().toString();
+        return new String(receivePacket.getData()).trim();
 
     }
 }

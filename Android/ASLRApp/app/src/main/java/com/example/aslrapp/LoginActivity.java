@@ -65,7 +65,9 @@ public class LoginActivity extends AppCompatActivity {
 
     private int PORT = 9999;
     private InetAddress ADDR;
-    private final static int PACKETSIZE = 1000;
+    private final static int PACKETSIZE = 1024;
+
+    private DatagramSocket socket = null;
 
     private int numTries = 0;
 
@@ -84,6 +86,12 @@ public class LoginActivity extends AppCompatActivity {
         } catch (UnknownHostException e){
             Log.e(TAG, "Unknown host exception when creating address!");
             e.printStackTrace();
+        }
+
+        Boolean createResult = createSocket();
+
+        if(!createResult){
+            Log.e(TAG, "Failed to create socket");
         }
 
         mLoginButton = (Button) findViewById(R.id.login_button);
@@ -128,6 +136,7 @@ public class LoginActivity extends AppCompatActivity {
 
                     // Login failed for some reason
                     if (receiveString == null){
+                       Log.e(TAG, "Failed to receive a string");
                        return;
                     }
 
@@ -138,11 +147,13 @@ public class LoginActivity extends AppCompatActivity {
                     if (result.getResult() && result.getDeveloper()) {
                         Log.i(TAG, "Successful login as developer");
                         sendLoad(username);
+                        socket.close();
                         Intent DeveloperIntent = new Intent(LoginActivity.this, DeveloperActivity.class);
                         LoginActivity.this.startActivity(DeveloperIntent);
                     } else if (result.getResult()) {
                         Log.i(TAG, "Successful login as user");
                         sendLoad(username);
+                        socket.close();
                         Intent SampleIntent = new Intent(LoginActivity.this, SampleActivity.class);
                         LoginActivity.this.startActivity(SampleIntent);
                     } else {
@@ -181,7 +192,7 @@ public class LoginActivity extends AppCompatActivity {
         return true;
     }
 
-    public LoginResult login (String json, String password){
+    public LoginResult login(String json, String password){
         JSONObject receiveJSON = null;
 
         String databasePassword = "";
@@ -189,21 +200,27 @@ public class LoginActivity extends AppCompatActivity {
         String developerString;
         Boolean developer = false;
 
+        Log.d(TAG, "json string: " + json);
+
         try {
             receiveJSON = (JSONObject) new JSONParser().parse(json);
         } catch (ParseException e){
+            Log.e(TAG, "Failed to parse JSON object");
+            Log.e(TAG, "Exception: " + e);
             return new LoginResult(false, false);
         }
 
-        databasePassword = receiveJSON.get("password").toString();
+        JSONObject payloadObject = (JSONObject) receiveJSON.get("payload");
+
+        databasePassword = payloadObject.get("password").toString();
 
         Log.d(TAG, "database password: " + databasePassword);
 
-        salt = Base64.decode(receiveJSON.get("saltValue").toString().getBytes(), Base64.DEFAULT);
+        salt = Base64.decode(payloadObject.get("salt").toString().getBytes(), Base64.DEFAULT);
 
-        Log.d(TAG, "Salt from JSON: " + receiveJSON.get("saltValue").toString());
+        developerString = payloadObject.get("developer").toString();
 
-        developerString = receiveJSON.get("developer").toString();
+        Log.d(TAG, "developer string: " + developerString);
 
         if (developerString.equals("1")){
             developer = true;
@@ -302,18 +319,16 @@ public class LoginActivity extends AppCompatActivity {
             return false;
         }
 
-        String type = receiveJSON.get("tyep").toString();
+        String type = receiveJSON.get("type").toString();
 
         if (!type.equalsIgnoreCase("ACK")){
-            Log.e(TAG, "Did not receive an ACK reposne");
+            Log.e(TAG, "Did not receive an ACK response");
         }
 
         return true;
     }
 
-    protected Boolean sendServer(JSONObject sendJSON){
-        DatagramSocket socket = null;
-
+    protected Boolean createSocket(){
         try{
             socket = new DatagramSocket() ;
         } catch (SocketException e){
@@ -330,7 +345,10 @@ public class LoginActivity extends AppCompatActivity {
             e.printStackTrace();
             return false;
         }
+        return true;
+    }
 
+    protected Boolean sendServer(JSONObject sendJSON){
         byte[] send = sendJSON.toString().getBytes(UTF8_CHARSET);
 
         DatagramPacket packet = new DatagramPacket(send, send.length, ADDR, PORT);
@@ -339,39 +357,18 @@ public class LoginActivity extends AppCompatActivity {
             socket.send( packet );
         } catch (Exception e){
             Log.e(TAG, "Exception when sending packet!");
-            Log.e("Udp:", "Socket Exception:", e);
+            Log.e(TAG, "Socket Exception:", e);
             e.printStackTrace();
             return false;
         }
-
-        socket.close();
 
         return true;
     }
 
     protected String receivePacket(){
-        DatagramSocket receiveSoc = null;
-
-        try{
-            receiveSoc = new DatagramSocket(PORT) ;
-        } catch (SocketException e){
-            Log.e(TAG, "Socket exception when creating socket and receiveSoc!");
-            Log.e(TAG, "Socket Error:", e);
-            e.printStackTrace();
-            return null;
-        }
-
-        try{
-            receiveSoc.setSoTimeout(30000);
-        } catch (SocketException e){
-            Log.e(TAG, "Socket exception when setting timeout!");
-            e.printStackTrace();
-            return null;
-        }
-
         DatagramPacket receivePacket = new DatagramPacket(new byte[PACKETSIZE], PACKETSIZE) ;
         try {
-            receiveSoc.receive(receivePacket);
+            socket.receive(receivePacket);
         } catch (Exception e){
             Log.e(TAG, "Exception when receiving packet!");
             Log.e(TAG, "Exception: ", e);
@@ -379,12 +376,7 @@ public class LoginActivity extends AppCompatActivity {
             return null;
         }
 
-        String receiveString = receivePacket.getData().toString();
-
-
-        Log.d(TAG, "receiveString: " + receiveString);
-
-        receiveSoc.close();
+        String receiveString = new String(receivePacket.getData()).trim();
 
         return receiveString;
     }
