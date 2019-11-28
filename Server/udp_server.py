@@ -190,10 +190,10 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
         next_id = self.server.database.get_user_len()
         self.server.database.create_user((
             next_id,
-            payload.username,
-            payload.saltValue,
-            payload.password,
-            payload.developer
+            payload["username"],
+            payload["saltValue"],
+            payload["password"],
+            payload["developer"]
         ))
 
     def __handleGetUser__(self, socket, payload):
