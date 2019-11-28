@@ -149,37 +149,40 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
         else:
             results = self.server.database.get_user_events(payload)
 
-        # Transform records
-        records = map(transform, results)
+        if (results != None):
+            # Transform records
+            records = map(transform, results)
             
 
-        # Record size should be around 196 * (8 float size) = 1568 bytes + other details ~ 1600 bytes
-        # Max UDP packet can be 65535 - 20 = 65535 -> - 20 / 1600 ~ 40.9
-        # Can send about 40 records over in one UDP packet
-        rec_len = len(records)
-        div = rec_len // MAX_REC
-        remainder = rec_len % MAX_REC
-        request = copy.deepcopy(RECORDS) # Reuse one record packet
+            # Record size should be around 196 * (8 float size) = 1568 bytes + other details ~ 1600 bytes
+            # Max UDP packet can be 65535 - 20 = 65535 -> - 20 / 1600 ~ 40.9
+            # Can send about 40 records over in one UDP packet
+            rec_len = len(records)
+            div = rec_len // MAX_REC
+            remainder = rec_len % MAX_REC
+            request = copy.deepcopy(RECORDS) # Reuse one record packet
 
-        if (div == 0): # We can fit all records in one packet
-            request["payload"]["records"] = records
-            self.server.ml_sock.sendto(bytes(json.dumps(request), "utf-8"), self.server.ml_addr)
+            if (div == 0): # We can fit all records in one packet
+                request["payload"]["records"] = records
+                self.server.ml_sock.sendto(bytes(json.dumps(request), "utf-8"), self.server.ml_addr)
+            else:
+                rec_start = 0
+                rec_end   = rec_len
+                # Have to send remainder packet after div count
+                for i in range(div):
+                    rec_start = i * 40
+                    rec_end   = (i + 1) * 40
+                    remaining = div - i
+                    if (remainder == 0): remaining - 1
+                    request["payload"]["remaining"] = div - i - 1
+                    request["payload"]["records"] = records[rec_start:rec_end]
+                    self.server.ml_sock.sendto(bytes(json.dumps(request), "utf-8"), self.server.ml_addr)
+                if (remainder > 0):
+                    request["payload"]["remaining"] = 0
+                    request["payload"]["records"] = records[rec_end + 1:rec_len]
+                    self.server.ml_sock.sendto(bytes(json.dumps(request), "utf-8"), self.server.ml_addr)
         else:
-            rec_start = 0
-            rec_end   = rec_len
-            # Have to send remainder packet after div count
-            for i in range(div):
-                rec_start = i * 40
-                rec_end   = (i + 1) * 40
-                remaining = div - i
-                if (remainder == 0): remaining - 1
-                request["payload"]["remaining"] = div - i - 1
-                request["payload"]["records"] = records[rec_start:rec_end]
-                self.server.ml_sock.sendto(bytes(json.dumps(request), "utf-8"), self.server.ml_addr)
-            if (remainder > 0):
-                request["payload"]["remaining"] = 0
-                request["payload"]["records"] = records[rec_end + 1:rec_len]
-                self.server.ml_sock.sendto(bytes(json.dumps(request), "utf-8"), self.server.ml_addr)
+            print("")
 
 
     def __handleCreateUser__(self, socket, payload):
