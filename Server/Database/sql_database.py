@@ -85,7 +85,7 @@ class Database:
         """
         user_id = self.get_user(username)[0] # First element of tuple is user ID
         cur = self.conn.cursor()
-        cur.execute("SELECT * FROM users WHERE userID=? AND class IS NOT 0", (user_id,))
+        cur.execute("SELECT * FROM MLResults WHERE userID=? AND class IS NOT 0", (user_id,))
 
         rows = cur.fetchall()
 
