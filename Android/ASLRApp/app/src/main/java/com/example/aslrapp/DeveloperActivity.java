@@ -1,6 +1,7 @@
 package com.example.aslrapp;
 
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -19,6 +20,7 @@ public class DeveloperActivity  extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_developer);
+        this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
 
         mCreateNewUserButton = (Button) findViewById(R.id.create_new_user_button);
         mSampleButton = (Button) findViewById(R.id.sign_letter_button);

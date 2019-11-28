@@ -1,5 +1,6 @@
 package com.example.aslrapp;
 
+import android.content.pm.ActivityInfo;
 import android.os.Bundle;
 import android.os.StrictMode;
 import android.util.Log;
@@ -10,8 +11,9 @@ import android.widget.RadioGroup;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import org.json.JSONException;
-import org.json.JSONObject;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
 
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -67,6 +69,7 @@ public class SampleActivity extends AppCompatActivity{
 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_sample);
+        this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
 
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
         StrictMode.setThreadPolicy(policy);
@@ -125,39 +128,12 @@ public class SampleActivity extends AppCompatActivity{
         mSampleButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                JSONObject receiveJSON = null;
                 Log.i(TAG, "Sample Button pressed");
-
-                JSONObject sampleRequest = new JSONObject();
-
-                try {
-                    sampleRequest.put("type", "sample");
-                } catch (JSONException e){
-                    Log.e(TAG, "JSON exception when creating receiveJSON!");
-                    e.printStackTrace();
-                    return;
-                }
-
-                if (letter == Letter.NONE){
-                    try {
-                        sampleRequest.put("payload", "");
-                    } catch (JSONException e){
-                        Log.e(TAG, "JSON exception when creating receiveJSON!");
-                        e.printStackTrace();
-                        return;
-                    }
-                } else {
-                    try {
-                        sampleRequest.put("payload", letter.getValue());
-                    } catch (JSONException e){
-                        Log.e(TAG, "JSON exception when creating receiveJSON!");
-                        e.printStackTrace();
-                        return;
-                    }
-                }
 
                 mSampleButton.setEnabled(false);
 
-                Boolean sendResult = sendServer(sampleRequest);
+                Boolean sendResult = sendServer();
 
                 if (!sendResult){
                     mSampleButton.setEnabled(true);
@@ -165,8 +141,23 @@ public class SampleActivity extends AppCompatActivity{
 
                 String receiveString = receivePacket();
 
-                //TODO process reponse to get letter
-                result = Letter.B;
+                try {
+                    receiveJSON = (JSONObject) new JSONParser().parse(receiveString);
+                } catch (ParseException e){
+                    Log.e(TAG, "Failed to parse return string");
+                    return;
+                }
+
+                String type = receiveJSON.get("type").toString();
+
+                if(!type.equalsIgnoreCase("prediction")){
+                    Log.e(TAG, "Did not receive a reply with a prediction type");
+                    return;
+                }
+
+                int letterInt = ((int) receiveJSON.get("payload"));
+
+                result = fromInteger(letterInt);
 
                 // display the correct ASL letter image
                 switch(result) {
@@ -197,8 +188,18 @@ public class SampleActivity extends AppCompatActivity{
         });
     }
 
-    protected Boolean sendServer(JSONObject jsonPacket){
+    protected Boolean sendServer(){
         DatagramSocket socket = null;
+
+        JSONObject sampleRequest = new JSONObject();
+
+        sampleRequest.put("type", "sample");
+
+        if (letter == Letter.NONE){
+            sampleRequest.put("payload", "");
+        } else {
+            sampleRequest.put("payload", letter.getValue());
+        }
 
         try{
             socket = new DatagramSocket() ;
@@ -217,7 +218,7 @@ public class SampleActivity extends AppCompatActivity{
             return false;
         }
 
-        byte[] sendJSON = jsonPacket.toString().getBytes(UTF8_CHARSET);
+        byte[] sendJSON = sampleRequest.toString().getBytes(UTF8_CHARSET);
 
         DatagramPacket packet = new DatagramPacket(sendJSON, sendJSON.length, ADDR, PORT);
 
@@ -264,5 +265,24 @@ public class SampleActivity extends AppCompatActivity{
         }
 
         return receivePacket.getData().toString();
+    }
+
+    private static Letter fromInteger(int x) {
+        switch(x) {
+            case 1:
+                return Letter.B;
+            case 2:
+                return Letter.I;
+            case 3:
+                return Letter.L;
+            case 4:
+                return Letter.O;
+            case 5:
+                return Letter.Y;
+            case 6:
+                return Letter.ONE;
+            default:
+                return Letter.NONE;
+        }
     }
 }

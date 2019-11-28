@@ -1,23 +1,16 @@
 package com.example.aslrapp;
 
-import android.content.Context;
+import android.util.Base64;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.runners.MockitoJUnitRunner;
-
-
 
 @RunWith(MockitoJUnitRunner.class)
 public class LoginUnitTest extends junit.framework.TestCase{
-    private static final String USERJSON = "{\"username\": \"userTest\", \"saltValue\": \"[B@6a2179d\", \"password\": \"[B@c8d1674\", \"developer\": \"0\"}";
-    private static final String DEVJSON = "{\"username\": \"devTest\", \"saltValue\": \"[B@6a2179d\", \"password\": \"[B@c8d1674\", \"developer\": \"1\" }";
+    private static final String USERJSON = "{\"username\": \"userTest\", \"saltValue\": \"kg+RpxTqFJu4A6duK99JOA==\", \"password\": \"gJQQvmiIAOF0EI3qY+OBvw==\", \"developer\": \"0\"}";
+    private static final String DEVJSON = "{\"username\": \"devTest\", \"saltValue\": \"kg+RpxTqFJu4A6duK99JOA==\", \"password\": \"gJQQvmiIAOF0EI3qY+OBvw==\", \"developer\": \"1\" }";
 
     private static final LoginResult USERLOGIN = new LoginResult(true, false);
     private static final LoginResult DEVLOGIN = new LoginResult(true, true);

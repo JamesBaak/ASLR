@@ -1,14 +1,18 @@
 package com.example.aslrapp;
 
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.os.Bundle;
 import android.os.StrictMode;
+import android.util.Base64;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.TextView;
+
+import android.util.Base64;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -36,7 +40,7 @@ import javax.crypto.spec.PBEKeySpec;
 
 public class CreateNewUserActivity extends AppCompatActivity{
 
-    private  final String TAG = "CreateNewUserActivity";
+    private final String TAG = "CreateNewUserActivity";
     private final Charset UTF8_CHARSET = Charset.forName("UTF-8");
 
     private static final Random RANDOM = new SecureRandom();
@@ -56,6 +60,7 @@ public class CreateNewUserActivity extends AppCompatActivity{
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_create_new_user);
+        this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
 
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
         StrictMode.setThreadPolicy(policy);
@@ -94,39 +99,49 @@ public class CreateNewUserActivity extends AppCompatActivity{
                 String confirmPassword = mConfirmPassword.getText().toString().trim();
                 Boolean dev = mDevBox.isChecked();
 
-                Boolean result;
+                Boolean validate = validate(username, password, confirmPassword);
 
-
-                result = _processInput(username);
-                if (!result){
-                    mResultView.setText("Invalid Username\n. Please ensure the username only contains alphanumeric characters");
+                if (!validate){
+                    mResultView.setText("Invalid Input. \nPlease ensure the username and password\n only contains alphanumeric characters");
                     mResultView.setVisibility(View.VISIBLE);
                     return;
                 }
-
-                Log.d(TAG, "Username: " + username);
-
-                result = _processInput(password);
-                if(!result){
-                    mResultView.setText("Invalid Password\n. Please ensure the password only contains alphanumeric characters");
-                    mResultView.setVisibility(View.VISIBLE);
-                    return;
-                }
-
-                Log.d(TAG, "Password: " + password);
-
-                result = _processInput(confirmPassword);
-                if (!result){
-                    mResultView.setText("Invalid Confirmation Password\n. Please ensure the password only contains alphanumeric characters");
-                    mResultView.setVisibility(View.VISIBLE);
-                    return;
-                }
-
-                Log.d(TAG, "Confirmation password: " + confirmPassword);
 
                 createNewUser(username, password, confirmPassword, dev);
             }
         });
+    }
+
+    public Boolean validate(String username, String password, String confirmPassword){
+        Boolean result;
+
+        result = _processInput(username);
+
+        if (!result){
+            Log.w(TAG, "Invalid username");
+            return false;
+        }
+
+        Log.d(TAG, "Username: " + username);
+
+        result = _processInput(password);
+        if (!result){
+            Log.w(TAG, "Invalid password");
+            return false;
+        }
+
+        Log.d(TAG, "Password: " + password);
+
+        result = _processInput(confirmPassword);
+        if (!result){
+            Log.w(TAG, "Invalid confirmation password");
+            return false;
+        }
+
+        Log.d(TAG, "Confirmation password: " + confirmPassword);
+
+        Log.d(TAG, "validate returning true");
+        return true;
     }
 
     public void createNewUser(String username, String password, String confirmPassword, Boolean developer){
@@ -143,7 +158,7 @@ public class CreateNewUserActivity extends AppCompatActivity{
 
         String encryptedPassword = _hashPassword(password, salt);
 
-        String saltStr = new String(salt);
+        String saltStr = new String(Base64.encode(salt, Base64.DEFAULT));
 
         Log.d(TAG, "Salt: " + saltStr);
         Log.d(TAG, "Encrypted password: " + encryptedPassword);
@@ -239,7 +254,7 @@ public class CreateNewUserActivity extends AppCompatActivity{
             e.printStackTrace();
             return null;
         }
-        return new String(hash);
+        return new String(Base64.encode(hash, Base64.DEFAULT));
     }
 
     protected Boolean sendServer(JSONObject jsonPacket){

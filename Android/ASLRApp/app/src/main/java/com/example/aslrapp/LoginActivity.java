@@ -1,9 +1,11 @@
 package com.example.aslrapp;
 
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.StrictMode;
+import android.util.Base64;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -71,6 +73,7 @@ public class LoginActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
+        this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
 
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
         StrictMode.setThreadPolicy(policy);
@@ -100,7 +103,7 @@ public class LoginActivity extends AppCompatActivity {
                 Boolean validate = validate(username, password);
 
                 if (!validate){
-                    mResultView.setText("Invalid Input. \nPlease ensure the username only contains alphanumeric characters");
+                    mResultView.setText("Invalid Input. \nPlease ensure the username and password\n only contains alphanumeric characters");
                     mResultView.setVisibility(View.VISIBLE);
                     return;
                 }
@@ -108,7 +111,13 @@ public class LoginActivity extends AppCompatActivity {
                 if (!lockFlag) {
                     mResultView.setVisibility(View.INVISIBLE);
 
-                    Boolean sendResult = sendServer(username);
+                    // create JSON object containing username to send to the server
+                    JSONObject usernameRequest = new JSONObject();
+
+                    usernameRequest.put("type", "get_user");
+                    usernameRequest.put("payload", username);
+
+                    Boolean sendResult = sendServer(usernameRequest);
 
                     // Login failed for some reason
                     if(!sendResult){
@@ -124,16 +133,16 @@ public class LoginActivity extends AppCompatActivity {
 
                     LoginResult result = login(receiveString, password);
 
-                    //LoginResult result = login( "{\"username\": \"userTest\", \"saltValue\": \"[B@6a2179d\", \"password\": \"[B@c8d1674\", \"developer\": \"0\"}", password);
-
                     Log.i(TAG, "Completed Login Function");
 
                     if (result.getResult() && result.getDeveloper()) {
                         Log.i(TAG, "Successful login as developer");
+                        sendLoad(username);
                         Intent DeveloperIntent = new Intent(LoginActivity.this, DeveloperActivity.class);
                         LoginActivity.this.startActivity(DeveloperIntent);
                     } else if (result.getResult()) {
                         Log.i(TAG, "Successful login as user");
+                        sendLoad(username);
                         Intent SampleIntent = new Intent(LoginActivity.this, SampleActivity.class);
                         LoginActivity.this.startActivity(SampleIntent);
                     } else {
@@ -188,10 +197,11 @@ public class LoginActivity extends AppCompatActivity {
 
         databasePassword = receiveJSON.get("password").toString();
 
-        salt = receiveJSON.get("saltValue").toString().getBytes(Charset.forName("UTF-8"));
+        Log.d(TAG, "database password: " + databasePassword);
 
-        Log.d(TAG, "Salt from JSON:" + receiveJSON.get("saltValue").toString());
-        Log.d(TAG, "Salt: " + salt.toString());
+        salt = Base64.decode(receiveJSON.get("saltValue").toString().getBytes(), Base64.DEFAULT);
+
+        Log.d(TAG, "Salt from JSON: " + receiveJSON.get("saltValue").toString());
 
         developerString = receiveJSON.get("developer").toString();
 
@@ -259,17 +269,50 @@ public class LoginActivity extends AppCompatActivity {
             e.printStackTrace();
             return null;
         }
-        return new String(hash);
+
+        Log.d(TAG, "hashed password: " + new String(Base64.encode(hash, Base64.DEFAULT)));
+        return new String(Base64.encode(hash, Base64.DEFAULT));
     }
 
-    protected Boolean sendServer(String username){
+    private Boolean sendLoad(String username){
+        JSONObject receiveJSON;
+
+        JSONObject sendJSON = new JSONObject();
+        sendJSON.put("type", "load");
+        sendJSON.put("payload", username);
+
+        Boolean result = sendServer(sendJSON);
+
+        if (!result){
+            Log.e(TAG, "Failed to send load request");
+            return false;
+        }
+
+        String response = receivePacket();
+
+        if (response == null){
+            Log.e(TAG, "Failed to receive response to load request");
+            return false;
+        }
+
+        try {
+            receiveJSON = (JSONObject) new JSONParser().parse(response);
+        } catch (ParseException e){
+            Log.e(TAG, "Failed to parse response");
+            return false;
+        }
+
+        String type = receiveJSON.get("tyep").toString();
+
+        if (!type.equalsIgnoreCase("ACK")){
+            Log.e(TAG, "Did not receive an ACK reposne");
+        }
+
+        return true;
+    }
+
+    protected Boolean sendServer(JSONObject sendJSON){
         DatagramSocket socket = null;
-
-        // create JSON object containing username to send to the server
-        JSONObject usernameRequest = new JSONObject();
-
-        usernameRequest.put("type", "get_user");
-        usernameRequest.put("payload", username);
 
         try{
             socket = new DatagramSocket() ;
@@ -288,9 +331,9 @@ public class LoginActivity extends AppCompatActivity {
             return false;
         }
 
-        byte[] sendJSON = usernameRequest.toString().getBytes(UTF8_CHARSET);
+        byte[] send = sendJSON.toString().getBytes(UTF8_CHARSET);
 
-        DatagramPacket packet = new DatagramPacket(sendJSON, sendJSON.length, ADDR, PORT);
+        DatagramPacket packet = new DatagramPacket(send, send.length, ADDR, PORT);
 
         try {
             socket.send( packet );

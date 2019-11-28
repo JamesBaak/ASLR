@@ -17,10 +17,18 @@
             </intent-filter>
         </activity>
 
-        <activity android:name=".CreateNewUserActivity"></activity>
-        <activity android:name=".LoginActivity"></activity>
-        <activity android:name=".SampleActivity"></activity>
-        <activity android:name=".DeveloperActivity"></activity>
+        <activity android:name=".CreateNewUserActivity"
+            android:screenOrientation="portrait"
+            ></activity>
+        <activity android:name=".LoginActivity"
+            android:screenOrientation="portrait"
+            ></activity>
+        <activity android:name=".SampleActivity"
+            android:screenOrientation="portrait"
+            ></activity>
+        <activity android:name=".DeveloperActivity"
+            android:screenOrientation="portrait"
+            ></activity>
     </application>
 
     <uses-permission android:name="android.permission.INTERNET" />
