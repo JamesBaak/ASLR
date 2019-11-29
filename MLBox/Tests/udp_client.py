@@ -9,6 +9,20 @@ data = {
     "type": "get_user",
     "payload" : "james"
 }
+data = {
+    "type": "create_user",
+    "payload": {
+        "username": "testUser",
+        "saltValue": "0xFFFF",
+        "password": "test123",
+        "developer": 0 
+    }
+}
+
+# data = {
+#     "type": "sample",
+#     "payload": ""
+# }
 
 # SOCK_DGRAM is the socket type to use for UDP sockets
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -20,3 +34,8 @@ received = str(sock.recv(1024), "utf-8")
 
 print("Sent:     {}".format(data))
 print("Received: {}".format(received))
+
+# received = str(sock.recv(1024), "utf-8")
+
+# print("Sent:     {}".format(data))
+# print("Received: {}".format(received))

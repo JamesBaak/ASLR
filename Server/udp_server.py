@@ -4,6 +4,7 @@ import json
 import copy
 import platform
 from Database.sql_database import Database
+from socket import error as SocketError
 
 
 # https://docs.python.org/3/library/socketserver.html
@@ -86,27 +87,28 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
         """
         self.__sendAck__(socket)
         response = self.__attemptSample__(payload)
-        data = response["payload"]
+        data = "Cannot connect to the ML Pi"
 
-        if (response['type'] == "save"):
+        if (response != None and response['type'] == "save"):
+            data = response["payload"]
             socket.sendto(
                 bytes(json.dumps(self.__constructJSON__(PRED, data["prediction"])), "utf-8"),
                 self.client_address
             )
+
+            # Save the event sample in the database
+            # event: (userId: int,data: json string, pred: int, class: int)
+            self.server.database.insert_event((
+                self.server.current_userId,
+                json.dumps({ "data": data["input"] }),
+                data["prediction"],
+                data["class"] # class is a keyword in python
+            ))
         else:
             socket.sendto(
                 bytes(json.dumps(self.__constructJSON__(ERROR, "ML PI Error...: {}".format(data))), "utf-8"),
                 self.client_address
             )
-
-        # Save the event sample in the database
-        # event: (userId: int,data: json string, pred: int, class: int)
-        self.server.database.insert_event((
-            self.server.current_userId,
-            json.dumps({ "data": data["input"] }),
-            data["prediction"],
-            data["class"] # class is a keyword in python
-        ))
 
 
     def __attemptSample__(self, payload):
@@ -114,12 +116,16 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
         # Create request and forward payload
         request = SAMPLE.copy()
         request["payload"] = payload
+        response = None
 
         # Forward sample request
         self.server.ml_sock.sendto(bytes(json.dumps(request), "utf-8"), self.server.ml_addr)
 
         # Wait for 'save' response from ML algorithm
-        response = json.loads(str(self.server.ml_sock.recv(2048), "utf-8"))
+        try:
+            response = json.loads(str(self.server.ml_sock.recv(2048), "utf-8"))
+        except SocketError as e:
+            pass
 
         return response
 
@@ -186,7 +192,7 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
                     request["payload"]["records"] = records[rec_end + 1:rec_len]
                     self.server.ml_sock.sendto(bytes(json.dumps(request), "utf-8"), self.server.ml_addr)
         else:
-            print("")
+            print("No saved events for user {}".format(payload))
 
 
     def __handleCreateUser__(self, socket, payload):

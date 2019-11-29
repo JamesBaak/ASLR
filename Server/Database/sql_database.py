@@ -99,7 +99,7 @@ class Database:
         """
         conn = None
         try:
-            conn = sqlite3.connect(db_file)
+            conn = sqlite3.connect(db_file, isolation_level=None)
             print(sqlite3.version)
         except Error as e:
             print(e)
