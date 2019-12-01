@@ -210,6 +210,16 @@ public class LoginActivity extends AppCompatActivity {
             return new LoginResult(false, false);
         }
 
+        String type = receiveJSON.get("type").toString();
+
+        if(type.equalsIgnoreCase("error")){
+            Log.e(TAG, "Received an error when response from server. Type: " + type);
+            return new LoginResult(false, false);
+        } else if (!type.equalsIgnoreCase("user")){
+            Log.e(TAG, "Did no receive a user response from server. Type: " + type);
+            return new LoginResult(false, false);
+        }
+
         JSONObject payloadObject = (JSONObject) receiveJSON.get("payload");
 
         databasePassword = payloadObject.get("password").toString();
