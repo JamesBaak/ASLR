@@ -9,23 +9,33 @@ import android.widget.Button;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+/*
+    The class for the developer activity
+    Contains all the developer options
+ */
 public class DeveloperActivity  extends AppCompatActivity {
 
+    // a tag for logging
     private  final String TAG = this.getClass().getSimpleName() + " @" + System.identityHashCode(this);
+
+    // buttons for selecting developer options
     private Button mCreateNewUserButton;
     private Button mSampleButton;
     private Button mTrainButton;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // activity setup
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_developer);
         this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
 
+        // connect GUI variables to values in layout
         mCreateNewUserButton = (Button) findViewById(R.id.create_new_user_button);
         mSampleButton = (Button) findViewById(R.id.sign_letter_button);
         mTrainButton = (Button) findViewById(R.id.train_button);
 
+        // create a new user button clicked function
         mCreateNewUserButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -36,6 +46,7 @@ public class DeveloperActivity  extends AppCompatActivity {
             }
         });
 
+        // sample button clicked function
         mSampleButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -45,6 +56,7 @@ public class DeveloperActivity  extends AppCompatActivity {
             }
         });
 
+        // developer button clicked function
         mTrainButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {

@@ -38,20 +38,32 @@ import java.util.concurrent.TimeUnit;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 
+/*
+    The class for the create new user activity
+    Controls the functionality to create a new user for the application
+ */
 public class CreateNewUserActivity extends AppCompatActivity{
 
+    // a tag for logging
     private final String TAG = "CreateNewUserActivity";
+    // charset for encoding and decoding byte arrays to Strings
     private final Charset UTF8_CHARSET = Charset.forName("UTF-8");
 
     private static final Random RANDOM = new SecureRandom();
+
+    // edit text views for user information
     private EditText mUsername;
     private EditText mPassword;
     private EditText mConfirmPassword;
+    // button to create new user
     private Button mCreateNewUserButton;
+    // text view showing the results of the user creation
     private TextView mResultView;
+    // indicates if the new user account is for a developer account
     private Boolean developer = false;
     private CheckBox mDevBox;
 
+    // Port and address information for sending requests to the server
     private int SENDPORT = 9999;
     private InetAddress ADDR;
     private final static int PACKETSIZE = 1024;
@@ -60,13 +72,16 @@ public class CreateNewUserActivity extends AppCompatActivity{
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // activity setup
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_create_new_user);
         this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
 
+        // turns off the default policy of having no network operations in the main thread
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
         StrictMode.setThreadPolicy(policy);
 
+        // connect GUI variables to values in layout
         mUsername = (EditText) findViewById(R.id.usernameEdit);
         mPassword = (EditText) findViewById(R.id.passwordEdit);
         mConfirmPassword = (EditText) findViewById(R.id.confirmPasswordEdit);
@@ -82,6 +97,7 @@ public class CreateNewUserActivity extends AppCompatActivity{
             e.printStackTrace();
         }
 
+        // create socket to send requests
         Boolean createResult = createSocket();
 
         if (!createResult){
@@ -90,23 +106,26 @@ public class CreateNewUserActivity extends AppCompatActivity{
 
         mResultView.setVisibility(View.INVISIBLE);
 
+        // get developer information from login activity
         developer = getIntent().getBooleanExtra("DEVELOPER", false);
 
+        // developer checkbox is only visible with a developer user account
         if(developer){
             mDevBox.setVisibility(View.VISIBLE);
         }
 
-
+        // create new user button clicked function
         mCreateNewUserButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
                 Log.i(TAG, "CreateNewUserButton pressed");
+                // get the entered username, password and confirmation password
                 String username = mUsername.getText().toString().trim();
                 String password = mPassword.getText().toString().trim();
                 String confirmPassword = mConfirmPassword.getText().toString().trim();
                 Boolean dev = mDevBox.isChecked();
 
+                // ensure user input follows the correct format
                 Boolean validate = validate(username, password, confirmPassword);
 
                 if (!validate){
@@ -121,6 +140,13 @@ public class CreateNewUserActivity extends AppCompatActivity{
         });
     }
 
+    /*
+        Validates user input
+        @param username The username of the user to be logged in
+        @param password The password of the user to be logged in
+        @param confirmPassword The confirmation password of the user to be logged in
+        return Boolean Indicates if the user input is correctly formed
+     */
     public Boolean validate(String username, String password, String confirmPassword){
         Boolean result;
 
@@ -153,15 +179,23 @@ public class CreateNewUserActivity extends AppCompatActivity{
         return true;
     }
 
+    /*
+        Creates the new user
+        @param username Username of the new user
+        @param password Password for the new user
+        @param confirmPassword Confirmation password for the new user
+    */
     public void createNewUser(String username, String password, String confirmPassword, Boolean developer){
         JSONObject receiveJSON = null;
 
+        // confirm that confirmation password and password match
         if (!confirmPassword.equals(password)){
             mResultView.setText(R.string.non_match_passwords_error);
             mResultView.setVisibility(View.VISIBLE);
             return;
         }
 
+        // randomize salt value for password encryption
         byte[] salt = new byte[16];
         RANDOM.nextBytes(salt);
 
@@ -172,7 +206,7 @@ public class CreateNewUserActivity extends AppCompatActivity{
         Log.d(TAG, "Salt: " + saltStr);
         Log.d(TAG, "Encrypted password: " + encryptedPassword);
 
-        //send user to database
+        // send new user to database
         JSONObject usernameRequest = new JSONObject();
 
         usernameRequest.put("type", "create_user");
@@ -187,7 +221,7 @@ public class CreateNewUserActivity extends AppCompatActivity{
 
         Boolean sendResult = sendServer(usernameRequest);
 
-        // Create new user request failed for some reason
+        // Create new user request failed
         if(!sendResult){
             Log.e(TAG, "Failed to send create new user requesst!");
             return;
@@ -195,12 +229,13 @@ public class CreateNewUserActivity extends AppCompatActivity{
 
         String receiveString = receivePacket();
 
-        // Create new user request failed for some reason
+        // Create new user request failed
         if (receiveString == null){
             Log.e(TAG, "Failed to get a response from server!");
             return;
         }
 
+        // ensure that the new user was created successfully
         try {
             receiveJSON = (JSONObject) new JSONParser().parse(receiveString);
         } catch (ParseException e){
@@ -240,6 +275,11 @@ public class CreateNewUserActivity extends AppCompatActivity{
         }
     }
 
+    /*
+        Helper process user input to ensure if follows the correct format
+        @param input The string to be checked
+        return Boolean Indicates if the user input follows the correct format
+    */
     private Boolean _processInput(String input) {
         if (input == null){
             return false;
@@ -250,6 +290,12 @@ public class CreateNewUserActivity extends AppCompatActivity{
         return true;
     }
 
+    /*
+        Helper function to hash the password using the PBKDF2WithHmacSHA1 algorithm
+        @param password User entered password
+        @param salt Salt value used ro encrypt password
+        return String Encrypted password
+    */
     private String _hashPassword(String password, byte[] salt){
         SecretKeyFactory factory;
         byte[] hash;
@@ -273,6 +319,10 @@ public class CreateNewUserActivity extends AppCompatActivity{
         return new String(Base64.encode(hash, Base64.DEFAULT));
     }
 
+    /*
+        Creates the Datagram socket used to send requests to the server
+        return Boolean Indicates if the socket was created
+    */
     protected Boolean createSocket(){
         try{
             socket = new DatagramSocket() ;
@@ -293,6 +343,11 @@ public class CreateNewUserActivity extends AppCompatActivity{
         return true;
     }
 
+    /*
+        Sends a JSON request to the server
+        @param JSONObject JSON object to send to server
+        return Boolean Indicates if request was sent successfully
+    */
     protected Boolean sendServer(JSONObject jsonPacket){
         byte[] sendJSON = jsonPacket.toString().getBytes(UTF8_CHARSET);
 
@@ -310,6 +365,10 @@ public class CreateNewUserActivity extends AppCompatActivity{
         return true;
     }
 
+    /*
+        Receives a response from the server
+        return String Response from the server
+    */
     protected String receivePacket(){
         DatagramPacket receivePacket = new DatagramPacket(new byte[PACKETSIZE], PACKETSIZE) ;
         try {

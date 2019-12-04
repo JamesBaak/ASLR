@@ -48,17 +48,29 @@ enum Letter
     }
 }
 
+/*
+    The class for the sample activity
+    Controls the functionality to send a sample request
+ */
 public class SampleActivity extends AppCompatActivity{
 
+    // a tag for logging
     private  final String TAG = "SampleActivity";
+    // charset for encoding and decoding byte arrays to Strings
     private final Charset UTF8_CHARSET = Charset.forName("UTF-8");
 
+    // displays the value of the sample result
     private ImageView mImage;
+    // buttons to select the type of request sent for training mode
     private RadioGroup mGroup;
+    // sample request button
     private Button mSampleButton;
+    // letter for training data
     private Letter letter;
+    // letter received from ML Pi
     private Letter result;
 
+    // Port and address information for sending requests to the server
     private int PORT = 9999;
     private InetAddress ADDR;
     private final static int PACKETSIZE = 1024;
@@ -69,10 +81,12 @@ public class SampleActivity extends AppCompatActivity{
     protected void onCreate(Bundle savedInstanceState) {
         Boolean train = false;
 
+        // activity setup
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_sample);
         this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
 
+        // turns off the default policy of having no network operations in the main thread
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
         StrictMode.setThreadPolicy(policy);
 
@@ -88,6 +102,7 @@ public class SampleActivity extends AppCompatActivity{
             e.printStackTrace();
         }
 
+        // create socket to send data
         Boolean createResult = createSocket();
 
         if (!createResult){
@@ -96,6 +111,7 @@ public class SampleActivity extends AppCompatActivity{
 
         mGroup.setVisibility(View.INVISIBLE);
 
+        // get value from developer activity indicting if the ML algorithm is being trained
         train = getIntent().getBooleanExtra("TRAIN_AI", false);
 
         letter = Letter.NONE;
@@ -104,6 +120,7 @@ public class SampleActivity extends AppCompatActivity{
             mGroup.setVisibility(View.VISIBLE);
         }
 
+        // select the letter to be sent when training the ML algorithm
         mGroup.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener()
         {
             public void onCheckedChanged(RadioGroup group, int checkedId) {
@@ -133,20 +150,25 @@ public class SampleActivity extends AppCompatActivity{
             }
         });
 
+        // sample button clicked function
         mSampleButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 JSONObject receiveJSON = null;
                 Log.i(TAG, "Sample Button pressed");
 
+                // disable sample button
                 mSampleButton.setEnabled(false);
 
+                // send sample request to server
                 Boolean sendResult = sendServer();
 
                 if (!sendResult){
                     mSampleButton.setEnabled(true);
                 }
 
+                // receive response from server
+                // the first response is an acknowledgment that the request was received
                 String receiveString = receivePacket();
 
                 Log.d(TAG, "receive string: " + receiveString);
@@ -158,6 +180,7 @@ public class SampleActivity extends AppCompatActivity{
                     return;
                 }
 
+                // ensure response form server is correct
                 String type = receiveJSON.get("type").toString();
 
                 if(!type.equalsIgnoreCase("ack")){
@@ -166,6 +189,8 @@ public class SampleActivity extends AppCompatActivity{
                     return;
                 }
 
+                // receive response from server
+                // the second response contains the response from the ML Pi
                 receiveString = receivePacket();
 
                 Log.d(TAG, "receive string: " + receiveString);
@@ -190,6 +215,7 @@ public class SampleActivity extends AppCompatActivity{
                     return;
                 }
 
+                // get the predicted letter from the response
                 int letterInt = ((int) receiveJSON.get("payload"));
 
                 result = fromInteger(letterInt);
@@ -223,6 +249,10 @@ public class SampleActivity extends AppCompatActivity{
         });
     }
 
+    /*
+        Creates the Datagram socket used to send requests to the server
+        return Boolean Indicates if the socket was created
+    */
     protected Boolean createSocket(){
         try{
             socket = new DatagramSocket() ;
@@ -243,6 +273,10 @@ public class SampleActivity extends AppCompatActivity{
         return true;
     }
 
+    /*
+        Sends a JSON request to the server
+        return Boolean Indicates if request was sent successfully
+    */
     protected Boolean sendServer(){
         JSONObject sampleRequest = new JSONObject();
 
@@ -270,6 +304,10 @@ public class SampleActivity extends AppCompatActivity{
         return true;
     }
 
+    /*
+        Receives a response from the server
+        return String Response from the server
+    */
     protected String receivePacket(){
         DatagramPacket receivePacket = new DatagramPacket(new byte[PACKETSIZE], PACKETSIZE) ;
         try {
@@ -284,6 +322,9 @@ public class SampleActivity extends AppCompatActivity{
         return new String(receivePacket.getData()).trim();
     }
 
+    /*
+        Converts an integer into the correct letter enum
+     */
     private static Letter fromInteger(int x) {
         switch(x) {
             case 1:
