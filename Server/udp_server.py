@@ -20,7 +20,7 @@ ACK     = { "type": "ack", "payload": "" }
 USER    = { "type": "user", "payload": {} }
 SAMPLE  = { "type": "sample", "payload": 0 }
 PRED    = { "type": "prediction", "payload": 0 }
-RECORDS = { "type": "records", "payload": { "records": [], "remaining": 0 }}
+RECORDS = { "type": "load", "payload": { "records": [], "remaining": 0 }}
 MAX_REC = 40
 
 class MyUDPServer(socketserver.UDPServer):
@@ -91,6 +91,7 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
 
         if (response != None and response['type'] == "save"):
             data = response["payload"]
+            print("Sending: {}".format(self.__constructJSON__(PRED, data["prediction"])))
             socket.sendto(
                 bytes(json.dumps(self.__constructJSON__(PRED, data["prediction"])), "utf-8"),
                 self.client_address
@@ -162,7 +163,9 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
         else:
             results = self.server.database.get_user_events(payload)
 
-        if (results != None):
+        request = copy.deepcopy(RECORDS) # Reuse one record packet
+
+        if (len(results) != 0):
             # Transform records
             records = map(transform, results)
             
@@ -173,7 +176,6 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
             rec_len = len(records)
             div = rec_len // MAX_REC
             remainder = rec_len % MAX_REC
-            request = copy.deepcopy(RECORDS) # Reuse one record packet
 
             if (div == 0): # We can fit all records in one packet
                 request["payload"]["records"] = records
@@ -195,7 +197,12 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
                     request["payload"]["records"] = records[rec_end + 1:rec_len]
                     self.server.ml_sock.sendto(bytes(json.dumps(request), "utf-8"), self.server.ml_addr)
         else:
+            # Send load request anyways to train the ML model and prepare for predictions
             print("No saved events for user {}".format(payload))
+            request["payload"]["remaining"] = 0
+            request["payload"]["records"] = []
+            self.server.ml_sock.sendto(bytes(json.dumps(request), "utf-8"), self.server.ml_addr)
+            print("Sent load...")
 
 
     def __handleCreateUser__(self, socket, payload):
