@@ -115,7 +115,10 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
         # Can access the ML PI address and socket through self.server.ml_addr
         # Create request and forward payload
         request = SAMPLE.copy()
-        request["payload"] = payload
+        if payload == "":
+            request["payload"] = 0
+        else:
+            request["payload"] = payload
         response = None
 
         # Forward sample request
