@@ -12,7 +12,7 @@ from socket import error as SocketError
 
 # Configurable parameters of the server
 HOST, PORT = "", 9999
-ML_HOST, ML_PORT = "localhost", 1024 # The location of the ML Pi
+ML_HOST, ML_PORT = "169.254.85.238", 1024 # The location of the ML Pi
 
 # JSON msg types for construction of responses
 ERROR   = { "type": "error", "payload": "" }
