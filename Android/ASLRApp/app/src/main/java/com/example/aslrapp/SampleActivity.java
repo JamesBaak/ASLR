@@ -8,6 +8,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.RadioGroup;
+import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -94,9 +95,8 @@ public class SampleActivity extends AppCompatActivity{
         mGroup = (RadioGroup) findViewById(R.id.button_group);
         mSampleButton = (Button) findViewById(R.id.sample_button);
 
-        // TODO for testing purposes -> update when connected to Pi
         try {
-            ADDR = InetAddress.getByName("10.0.2.2");
+            ADDR = InetAddress.getByName("172.20.10.4");
         } catch (UnknownHostException e){
             Log.e(TAG, "Unknown host exception when creating address!");
             e.printStackTrace();
@@ -216,9 +216,9 @@ public class SampleActivity extends AppCompatActivity{
                 }
 
                 // get the predicted letter from the response
-                int letterInt = ((int) receiveJSON.get("payload"));
+                String letterStr = (receiveJSON.get("payload").toString());
 
-                result = fromInteger(letterInt);
+                result = fromString(letterStr);
 
                 // display the correct ASL letter image
                 switch(result) {
@@ -325,19 +325,19 @@ public class SampleActivity extends AppCompatActivity{
     /*
         Converts an integer into the correct letter enum
      */
-    private static Letter fromInteger(int x) {
+    private static Letter fromString(String x) {
         switch(x) {
-            case 1:
+            case "1":
                 return Letter.B;
-            case 2:
+            case"2":
                 return Letter.I;
-            case 3:
+            case "3":
                 return Letter.L;
-            case 4:
+            case "4":
                 return Letter.O;
-            case 5:
+            case"5":
                 return Letter.Y;
-            case 6:
+            case "6":
                 return Letter.ONE;
             default:
                 return Letter.NONE;

@@ -89,9 +89,8 @@ public class CreateNewUserActivity extends AppCompatActivity{
         mResultView = (TextView) findViewById(R.id.resultView);
         mDevBox = (CheckBox) findViewById(R.id.developerBox);
 
-        // TODO for testing purposes -> update when connected to Pi
         try {
-            ADDR = InetAddress.getByName("10.0.2.2");
+            ADDR = InetAddress.getByName("172.20.10.4");
         } catch (UnknownHostException e){
             Log.e(TAG, "Unknown host exception when creating address!");
             e.printStackTrace();

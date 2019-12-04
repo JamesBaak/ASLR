@@ -106,9 +106,8 @@ public class LoginActivity extends AppCompatActivity {
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
         StrictMode.setThreadPolicy(policy);
 
-        // TODO for testing purposes -> update when connected to Pi
         try {
-            ADDR = InetAddress.getByName("10.0.2.2");
+            ADDR = InetAddress.getByName("172.20.10.4");
         } catch (UnknownHostException e){
             Log.e(TAG, "Unknown host exception when creating address!");
             e.printStackTrace();
