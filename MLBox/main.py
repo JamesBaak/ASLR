@@ -10,8 +10,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn import model_selection
 from sklearn.preprocessing import MultiLabelBinarizer
 
-PORT = 9999
-HOST_ADDRESS = "localhost"
+PORT = 1024
+HOST_ADDRESS = ""
 ACK   = { "type": "ack", "payload": "" }
 ERROR = { "type": "error", "payload": "" }
 SAVE  = { "type": "save", "payload": {} }
@@ -20,11 +20,36 @@ SAVE  = { "type": "save", "payload": {} }
 clf = OneVsRestClassifier(MLPClassifier(solver='lbfgs', alpha=0.05, hidden_layer_sizes=(24,), random_state=1))
 scaler = StandardScaler()
 mlb = MultiLabelBinarizer()
-labels = []
-features = []
+s_labels = [1]
+s_features = [
+    [0.12, 0.14, 0.13, 0.14, 0.14, 0.14, 0.14, 0.12, 0.14,
+     0.12, 0.13, 0.12, 0.77, 0.16, 0.12, 0.12, 0.12, 0.12,
+     0.11, 0.12, 0.12, 0.12, 0.13, 0.12, 0.12, 0.12, 0.12,
+     0.12, 0.12, 0.12, 0.12, 0.12, 0.13, 0.12, 0.12, 0.12,
+     0.12, 0.12, 0.13, 0.12, 0.13, 0.12, 0.12, 0.12, 0.12,
+     0.12, 0.12, 0.12, 0.12, 0.12, 0.14, 0.12, 0.12, 0.12,
+     0.13, 0.12, 0.12, 0.12, 0.14, 0.12, 0.12, 0.12, 0.12,
+     0.12, 0.13, 0.12, 0.13, 0.12, 0.12, 0.12, 0.13, 0.12,
+     0.13, 0.12, 0.13, 0.12, 0.12, 0.12, 0.12, 0.12, 0.12,
+     0.12, 0.12, 0.12, 0.14, 0.12, 0.14, 0.12, 0.12, 0.12,
+     0.12, 0.12, 0.13, 0.12, 0.12, 0.12, 0.13, 0.12, 0.12,
+     0.11, 0.13, 0.12, 0.14, 0.12, 0.13, 0.12, 0.12, 0.12,
+     0.14, 0.12, 0.12, 0.12, 0.12, 0.12, 0.13, 0.12, 0.13,
+     0.12, 0.13, 0.12, 0.12, 0.12, 0.14, 0.12, 0.13, 0.12,
+     0.12, 0.12, 0.13, 0.12, 0.14, 0.12, 0.14, 0.12, 0.14,
+     0.12, 0.14, 0.12, 0.14, 0.12, 0.14, 0.12, 0.78, 0.16,
+     0.12, 0.14, 0.12, 0.12, 0.14, 0.12, 0.12, 0.12, 0.13,
+     0.12, 0.12, 0.12, 0.13, 0.12, 0.14, 0.13, 0.85, 0.18,
+     0.12, 0.13, 0.14, 0.12, 0.12, 0.14, 0.14, 0.12, 0.11,
+     0.13, 0.14, 0.12, 0.12, 0.12, 0.12, 0.12, 0.12, 0.79,
+     0.16, 0.78, 0.16, 0.13, 0.12, 0.14, 0.12, 0.14, 0.12,
+     0.12, 0.12, 0.13, 0.12, 0.12, 0.13, 0.13]
+]
+labels   = s_labels
+features = s_features
 loaded = False
 
-def __constructJSON__(self, msgType, msg):
+def __constructJSON__(msgType, msg):
         """
         Construct an error json for UDP response
         msg [string] - The payload of the error message
@@ -63,11 +88,11 @@ def handleSample(socket, address, payload, buffer):
             
         #Prediction
         # Get last prediction. Sadly no prediction of single input
-        pred = clf.predict(features)[-1]
+        pred = clf.predict(np.array(features))[-1]
         result = {
-            "prediction": pred,
-            "class": payload,
-            "input": in_vector
+            "prediction": int(pred),
+            "class": int(payload),
+            "input": in_vector.tolist()
         }
 
         socket.sendto(
@@ -76,10 +101,16 @@ def handleSample(socket, address, payload, buffer):
         )
 
 def train_model():
+    acccuracy = -0.0
     # Do this so we can avoid overfitting due to our small data set
-    X_train, X_test, y_train, y_test = model_selection.train_test_split(np.array(features), np.array(labels), test_size=0.3, random_state=42)
-    clf.fit(X_train,y_train)
-    acccuracy = clf.score(X_test, y_test)
+    if len(features) >= 10:
+        X_train, X_test, y_train, y_test = model_selection.train_test_split(np.array(features), np.array(labels), test_size=0.3, random_state=42)
+        clf.fit(X_train,y_train)
+        acccuracy = clf.score(X_test, y_test)
+    else:
+        X_train, y_train = np.array(features), np.array(labels)
+        clf.fit(X_train,y_train)
+
     print("Model Trained...")
     print("Accuracy: {}".format(acccuracy))
 
@@ -89,8 +120,8 @@ def handleLoad(socket, address, payload):
     global features
     
     if loaded:
-        features = []
-        labels = []
+        features = s_features
+        labels = s_labels
         loaded = False
 
     for rec in payload["records"]:
@@ -100,7 +131,7 @@ def handleLoad(socket, address, payload):
     
     if payload["remaining"] == 0:
         loaded = True
-    
+    print("Loading records complete... Training model")
     train_model()
 
 
@@ -125,14 +156,16 @@ def main():
 
         request = json.loads(buf.decode("utf-8"))
 
+        print(request)
+
          # Check to see if type and payload are in the json message request to the server
         if not "type" in request:
-            socket.sendto(
+            sock.sendto(
                 bytes(json.dumps(__constructJSON__(ERROR, "Missing type field...")), "utf-8"),
                 address
             )
         elif not "payload" in request:
-            socket.sendto(
+            sock.sendto(
                 bytes(json.dumps(__constructJSON__(ERROR, "Missing payload field...")), "utf-8"),
                 address
             )
@@ -140,11 +173,11 @@ def main():
         else:
              # Process request
             if request["type"] == "sample": # Send request to ML PI to sample and return response
-                handleSample(socket, address, request["payload"], sb.readBuffer())
+                handleSample(sock, address, request["payload"], sb.readBuffer())
             elif request["type"] == "load":
-                handleLoad(socket, address, request["payload"])
+                handleLoad(sock, address, request["payload"])
             else: # Request type not specified
-                socket.sendto(
+                sock.sendto(
                     bytes(json.dumps(__constructJSON__(ERROR, "Unknown type field...")), "utf-8"),
                     address
                 )
