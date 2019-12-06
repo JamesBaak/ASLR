@@ -1,4 +1,11 @@
 ## Machine Learning Raspberry Pi
+
+### Description:
+The machine learning Pi is the component in the ASLR system that samples the buffer between the Arduino and the Pi buffer thread, and predicts the current user's gesture. The prediction is formed by passing the standardized 196 sized float buffer into a simple neural networks using the One-Vs-Rest multiclass classification strategy and hyperparameters discussed in the SensIR paper.
+
+SensIR paper:
+Jess McIntosh et al., “SensIR: Detecting Hand Gestures with a Wearable Bracelet using Infrared Transmission and Reflection”, UIST 2017, Quebec City, Canada, Oct. 2017
+
 ### Starting the program:
 1. Connect the Arduino and ensure that it is running the program to output Infrared receiver values over serial using the 
 communication protocol described in the design and final report document.
