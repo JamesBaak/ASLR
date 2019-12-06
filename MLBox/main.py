@@ -20,6 +20,8 @@ SAVE  = { "type": "save", "payload": {} }
 clf = OneVsRestClassifier(MLPClassifier(solver='lbfgs', alpha=0.05, hidden_layer_sizes=(24,), random_state=1))
 scaler = StandardScaler()
 mlb = MultiLabelBinarizer()
+# Must have at least one sample in order to fit and make predictions using the classifier.
+# Without it new users will be unable to use the system.
 s_labels = [1]
 s_features = [
     [0.12, 0.14, 0.13, 0.14, 0.14, 0.14, 0.14, 0.12, 0.14,
