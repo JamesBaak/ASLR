@@ -5,7 +5,7 @@
 ```
 python udp_server.py
 ```
-The server should connect to the database with the Database folder. If it does not exist it will be created, but will not function as the tables do not exist.
+The server should connect to the database with the Database folder. If it does not exist it will be created, but will not function as the tables do not exist. If the server is unable to connect to the Machine Learning (ML) Pi or if there is an issue, the server will return an error to sample requestor indicating the issue with the ML Pi.
 
 ## Interfacing with the server:
 The server takes UDP requests with a string representing a JSON in the content. The JSON should be encoded as a string with UTF-8.
