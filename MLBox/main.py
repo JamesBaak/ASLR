@@ -184,9 +184,5 @@ def main():
                     address
                 )
 
-#     # Send back ack
-#     data = "ACK: " + buf.decode("utf-8")
-#     s.sendto(data.encode('utf-8'), address)
-
 if __name__ == "__main__":
     main()
